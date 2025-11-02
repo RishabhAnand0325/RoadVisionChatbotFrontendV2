@@ -2,4 +2,4 @@ const isProduction = window.location.protocol === 'https:';
 
 export const API_BASE_URL = isProduction
   ? 'https://aware-thoroughly-goldfish.ngrok-free.app/api/v1'
-  : 'http://localhost:5000/api/v1';
+  : '/api';

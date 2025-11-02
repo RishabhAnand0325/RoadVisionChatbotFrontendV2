@@ -91,3 +91,67 @@ export async function deletePdf(chatId: string, pdfName: string): Promise<void> 
   });
   if (!response.ok) throw new Error("Failed to delete PDF");
 }
+
+export function uploadFileWithProgress(
+  chatId: string,
+  file: File,
+  onProgress: (progress: number) => void
+): { promise: Promise<void>; xhr: XMLHttpRequest } {
+  const xhr = new XMLHttpRequest();
+  const formData = new FormData();
+  formData.append("pdf", file);
+
+  const promise = new Promise<void>((resolve, reject) => {
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable) {
+        const progress = (e.loaded / e.total) * 100;
+        onProgress(progress);
+      }
+    });
+
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error(`Upload failed with status ${xhr.status}`));
+      }
+    });
+
+    xhr.addEventListener("error", () => {
+      reject(new Error("Upload failed"));
+    });
+
+    xhr.addEventListener("abort", () => {
+      reject(new Error("Upload canceled."));
+    });
+
+    xhr.open("POST", `${API_BASE_URL}/askai/chats/${chatId}/upload-pdf`);
+    xhr.send(formData);
+  });
+
+  return { promise, xhr };
+}
+
+export function subscribeToChatDocuments(
+  chatId: string,
+  onUpdate: (data: ChatDocumentsResponse) => void,
+  onError?: (error: Error) => void
+): EventSource {
+  const eventSource = new EventSource(`${API_BASE_URL}/askai/chats/${chatId}/docs-sse`);
+
+  eventSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data) as ChatDocumentsResponse;
+      onUpdate(data);
+    } catch (error) {
+      if (onError) onError(new Error("Failed to parse SSE data"));
+    }
+  };
+
+  eventSource.onerror = (error) => {
+    if (onError) onError(new Error("SSE connection error"));
+    eventSource.close();
+  };
+
+  return eventSource;
+}

@@ -1,8 +1,17 @@
+export interface SourceReference {
+  content: string;
+  page?: number | string;
+  source?: string;
+}
+
 export interface Message {
   id: string;
   text: string;
   sender: "user" | "assistant";
   timestamp: string;
+  isError?: boolean;
+  hasContext?: boolean;
+  sourceReferences?: SourceReference[];
 }
 
 export interface ChatMetadata {
