@@ -1,0 +1,1407 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Ceigall AI Platform API",
+    "version": "1.0.0",
+    "description": "FastAPI backend for Ceigall AI Platform with AI-powered legal and document intelligence"
+  },
+  "servers": [
+    {
+      "url": "https://aware-thoroughly-goldfish.ngrok-free.app/api/v1",
+      "description": "Production server"
+    },
+    {
+      "url": "http://localhost:5000/api/v1",
+      "description": "Local development server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "email": { "type": "string", "format": "email" },
+          "full_name": { "type": "string" },
+          "employee_id": { "type": "string" },
+          "mobile_number": { "type": "string" },
+          "designation": { "type": "string" },
+          "department": { "type": "string" },
+          "role": { "type": "string", "enum": ["employee", "department_admin", "super_admin"] },
+          "account_status": { "type": "string", "enum": ["Active", "Inactive", "Locked", "Pending"] },
+          "is_active": { "type": "boolean" }
+        }
+      },
+      "FolderPermission": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "folder_id": { "type": "string", "format": "uuid" },
+          "user_id": { "type": "string", "format": "uuid", "nullable": true },
+          "department": { "type": "string", "nullable": true },
+          "permission_level": { "type": "string", "enum": ["read", "write", "admin"] },
+          "inherit_to_subfolders": { "type": "boolean" },
+          "granted_by": { "type": "string", "format": "uuid" },
+          "granted_at": { "type": "string", "format": "date-time" },
+          "valid_until": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "Document": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "original_filename": { "type": "string" },
+          "mime_type": { "type": "string" },
+          "size_bytes": { "type": "integer" },
+          "storage_provider": { "type": "string", "enum": ["s3", "local"] },
+          "storage_path": { "type": "string" },
+          "s3_bucket": { "type": "string" },
+          "s3_etag": { "type": "string" },
+          "s3_version_id": { "type": "string" },
+          "category_ids": { "type": "array", "items": { "type": "string", "format": "uuid" }, "description": "Multiple categories can be assigned to a document" },
+          "folder_id": { "type": "string", "format": "uuid", "nullable": true },
+          "folder_path": { "type": "string" },
+          "status": { "type": "string", "enum": ["pending", "processing", "active", "archived"] },
+          "confidentiality_level": { "type": "string", "enum": ["public", "internal", "confidential", "restricted"] },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "metadata": { "type": "object" },
+          "version": { "type": "integer" },
+          "uploaded_by": { "type": "string", "format": "uuid" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Folder": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "parent_folder_id": { "type": "string", "format": "uuid", "nullable": true, "description": "Parent folder for hierarchical structure" },
+          "path": { "type": "string", "example": "/Legal/Cases/2025/", "description": "Materialized path for tree navigation" },
+          "document_count": { "type": "integer", "description": "Number of documents in this folder" },
+          "subfolders": { 
+            "type": "array", 
+            "items": { "$ref": "#/components/schemas/Folder" },
+            "description": "Child folders for hierarchical navigation"
+          },
+          "department": { "type": "string" },
+          "confidentiality_level": { "type": "string", "enum": ["public", "internal", "confidential", "restricted"] },
+          "description": { "type": "string", "nullable": true },
+          "is_system_folder": { "type": "boolean" },
+          "created_by": { "type": "string", "format": "uuid" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "DocumentCategory": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "color": { "type": "string" },
+          "icon": { "type": "string", "nullable": true }
+        },
+        "description": "Document categories are separate from folders and can be assigned to multiple documents"
+      },
+      "DocumentSummary": {
+        "type": "object",
+        "properties": {
+          "total_documents": { "type": "integer" },
+          "recent_uploads": { "type": "integer" },
+          "storage_used": { "type": "string" },
+          "shared_documents": { "type": "integer" }
+        }
+      },
+      "AISummary": {
+        "type": "object",
+        "properties": {
+          "document_type": { "type": "string" },
+          "key_topic": { "type": "string" },
+          "language": { "type": "string" },
+          "generated_at": { "type": "string", "format": "date-time" },
+          "executive_summary": { "type": "string" },
+          "key_information": { "type": "object", "additionalProperties": { "type": "string" } },
+          "important_dates": { 
+            "type": "array", 
+            "items": { 
+              "type": "object",
+              "properties": {
+                "date": { "type": "string" },
+                "description": { "type": "string" }
+              }
+            }
+          },
+          "key_entities": {
+            "type": "object",
+            "properties": {
+              "organizations": { "type": "array", "items": { "type": "string" } },
+              "people": { "type": "array", "items": { "type": "string" } },
+              "locations": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "risk_flags": { "type": "array", "items": { "type": "string" } },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "confidence_score": { "type": "number" }
+        }
+      },
+      "ChatMetadata": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "message_count": { "type": "integer" },
+          "has_pdf": { "type": "boolean" },
+          "pdf_count": { "type": "integer" },
+          "pdf_list": { "type": "array", "items": { "type": "object" } }
+        }
+      },
+      "Message": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "text": { "type": "string" },
+          "sender": { "type": "string", "enum": ["user", "assistant"] },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Source": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "source": { "type": "string" },
+          "location": { "type": "string" },
+          "doc_type": { "type": "string" },
+          "content_type": { "type": "string" },
+          "content": { "type": "string" },
+          "full_content": { "type": "string" },
+          "page": { "type": "string", "nullable": true }
+        }
+      },
+      "Tender": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "organization": { "type": "string" },
+          "deadline": { "type": "string", "format": "date-time" },
+          "status": { "type": "string", "enum": ["open", "closed", "awarded"] },
+          "score": { "type": "number" },
+          "document_id": { "type": "string", "format": "uuid" }
+        }
+      },
+      "Case": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "case_number": { "type": "string" },
+          "title": { "type": "string" },
+          "status": { "type": "string", "enum": ["active", "closed", "pending"] },
+          "priority": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+          "assigned_to": { "type": "string", "format": "uuid" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "next_hearing": { "type": "string", "format": "date-time", "nullable": true },
+          "documents": { "type": "array", "items": { "$ref": "#/components/schemas/Document" } }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "User login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": { "type": "string" },
+                  "password": { "type": "string" }
+                },
+                "required": ["username", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "access_token": { "type": "string" },
+                    "token_type": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "User registration",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "full_name": { "type": "string" },
+                  "employee_id": { "type": "string" },
+                  "mobile_number": { "type": "string" },
+                  "designation": { "type": "string" },
+                  "department": { "type": "string" },
+                  "password": { "type": "string" }
+                },
+                "required": ["email", "full_name", "employee_id", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/User" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Get current user",
+        "responses": {
+          "200": {
+            "description": "Current user details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/User" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/dms/summary": {
+      "get": {
+        "tags": ["DMS - Summary"],
+        "summary": "Get DMS summary statistics",
+        "description": "Returns overview statistics for the document management system",
+        "responses": {
+          "200": {
+            "description": "DMS summary statistics",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DocumentSummary" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dms/categories": {
+      "get": {
+        "tags": ["DMS - Categories"],
+        "summary": "List document categories",
+        "description": "Returns all available document categories. Categories are separate from folders and multiple categories can be assigned to each document.",
+        "responses": {
+          "200": {
+            "description": "List of categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/DocumentCategory" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dms/folders": {
+      "get": {
+        "tags": ["DMS - Folders"],
+        "summary": "List accessible folders with hierarchy",
+        "description": "Returns hierarchical folder structure filtered by user's department and permissions. Folders can contain subfolders and documents.",
+        "parameters": [
+          {
+            "name": "parent_id",
+            "in": "query",
+            "description": "Filter by parent folder (null for root folders)",
+            "schema": { "type": "string", "format": "uuid", "nullable": true }
+          },
+          {
+            "name": "department",
+            "in": "query",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hierarchical list of folders with subfolders",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Folder" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["DMS - Folders"],
+        "summary": "Create new folder",
+        "description": "Creates a new folder. Requires write permission on parent folder.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string", "maxLength": 255 },
+                  "parent_folder_id": { "type": "string", "format": "uuid", "nullable": true, "description": "Parent folder ID for creating subfolders" },
+                  "department": { "type": "string" },
+                  "confidentiality_level": { "type": "string", "enum": ["public", "internal", "confidential", "restricted"] },
+                  "description": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Folder created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Folder" }
+              }
+            }
+          },
+          "403": { "description": "Insufficient permissions" }
+        }
+      }
+    },
+    "/dms/folders/{folder_id}": {
+      "get": {
+        "tags": ["DMS - Folders"],
+        "summary": "Get folder details",
+        "parameters": [
+          {
+            "name": "folder_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Folder details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Folder" }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["DMS - Folders"],
+        "summary": "Update folder metadata",
+        "description": "Update folder name, description, or confidentiality. Requires admin permission on folder.",
+        "parameters": [
+          {
+            "name": "folder_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "confidentiality_level": { "type": "string", "enum": ["public", "internal", "confidential", "restricted"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Folder updated" },
+          "403": { "description": "Insufficient permissions" }
+        }
+      },
+      "delete": {
+        "tags": ["DMS - Folders"],
+        "summary": "Delete folder",
+        "description": "Soft delete folder if empty. Requires admin permission.",
+        "parameters": [
+          {
+            "name": "folder_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "204": { "description": "Folder deleted" },
+          "400": { "description": "Folder not empty" },
+          "403": { "description": "Insufficient permissions" }
+        }
+      }
+    },
+    "/dms/folders/{folder_id}/move": {
+      "post": {
+        "tags": ["DMS - Folders"],
+        "summary": "Move folder to new parent",
+        "description": "Moves folder and all contents to new parent. Requires admin permission on both source and destination.",
+        "parameters": [
+          {
+            "name": "folder_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["new_parent_id"],
+                "properties": {
+                  "new_parent_id": { "type": "string", "format": "uuid", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Folder moved" },
+          "403": { "description": "Insufficient permissions" }
+        }
+      }
+    },
+    "/dms/folders/{folder_id}/permissions": {
+      "get": {
+        "tags": ["DMS - Folders"],
+        "summary": "Get folder permissions",
+        "description": "Returns all permissions for a folder. Requires admin permission on folder.",
+        "parameters": [
+          {
+            "name": "folder_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Folder permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/FolderPermission" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["DMS - Folders"],
+        "summary": "Grant folder permission",
+        "description": "Grant permission to user or department. Department admins can only grant permissions on their department's folders.",
+        "parameters": [
+          {
+            "name": "folder_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["permission_level"],
+                "properties": {
+                  "user_id": { "type": "string", "format": "uuid", "description": "Grant to specific user (mutually exclusive with department)" },
+                  "department": { "type": "string", "description": "Grant to entire department (mutually exclusive with user_id)" },
+                  "permission_level": { "type": "string", "enum": ["read", "write", "admin"] },
+                  "inherit_to_subfolders": { "type": "boolean", "default": true },
+                  "valid_until": { "type": "string", "format": "date-time", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Permission granted" },
+          "403": { "description": "Insufficient permissions" }
+        }
+      }
+    },
+    "/dms/folders/{folder_id}/permissions/{permission_id}": {
+      "delete": {
+        "tags": ["DMS - Folders"],
+        "summary": "Revoke folder permission",
+        "parameters": [
+          {
+            "name": "folder_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "permission_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "204": { "description": "Permission revoked" },
+          "403": { "description": "Insufficient permissions" }
+        }
+      }
+    },
+    "/dms/upload-url": {
+      "post": {
+        "tags": ["DMS - Documents"],
+        "summary": "Get presigned S3 upload URL",
+        "description": "Generate a presigned URL for direct S3 upload from frontend. Creates document record in 'pending' status.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["filename", "file_size", "mime_type", "folder_id"],
+                "properties": {
+                  "filename": { "type": "string", "example": "Contract_2025.pdf" },
+                  "file_size": { "type": "integer", "example": 2048576, "description": "File size in bytes" },
+                  "mime_type": { "type": "string", "example": "application/pdf" },
+                  "folder_id": { "type": "string", "format": "uuid" },
+                  "category_id": { "type": "string", "format": "uuid" },
+                  "tags": { "type": "array", "items": { "type": "string" } },
+                  "confidentiality_level": { "type": "string", "enum": ["public", "internal", "confidential", "restricted"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Presigned upload URL generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "upload_url": { "type": "string", "description": "Presigned S3 URL for PUT request" },
+                    "document_id": { "type": "string", "format": "uuid" },
+                    "storage_path": { "type": "string", "example": "documents/2025/01/uuid.pdf" },
+                    "expires_in": { "type": "integer", "example": 3600, "description": "URL expiration in seconds" }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "description": "No write permission on folder" }
+        }
+      }
+    },
+    "/dms/documents/{document_id}/confirm-upload": {
+      "post": {
+        "tags": ["DMS - Documents"],
+        "summary": "Confirm S3 upload completion",
+        "description": "Notify backend that S3 upload is complete. Triggers Celery task for document processing.",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["s3_etag"],
+                "properties": {
+                  "s3_etag": { "type": "string", "description": "ETag returned by S3 after upload" },
+                  "s3_version_id": { "type": "string", "description": "Version ID if S3 versioning enabled" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Upload confirmed, processing started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "processing" },
+                    "task_id": { "type": "string", "description": "Celery task ID for tracking" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dms/documents": {
+      "get": {
+        "tags": ["DMS - Documents"],
+        "summary": "List accessible documents",
+        "description": "Returns documents filtered by user permissions, folder access, and confidentiality level",
+        "parameters": [
+          {
+            "name": "folder_id",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "category_id",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Full-text search on name and content",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "schema": { "type": "array", "items": { "type": "string" } }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["active", "archived", "pending", "processing"] }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 50 }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": { "type": "integer", "default": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of documents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "documents": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Document" }
+                    },
+                    "total": { "type": "integer" },
+                    "limit": { "type": "integer" },
+                    "offset": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dms/documents/{document_id}": {
+      "get": {
+        "tags": ["DMS - Documents"],
+        "summary": "Get document details",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Document" }
+              }
+            }
+          },
+          "403": { "description": "No permission to access document" }
+        }
+      },
+      "patch": {
+        "tags": ["DMS - Documents"],
+        "summary": "Update document metadata",
+        "description": "Update document name, tags, folder, etc. Requires write permission.",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "folder_id": { "type": "string", "format": "uuid" },
+                  "tags": { "type": "array", "items": { "type": "string" } },
+                  "status": { "type": "string", "enum": ["active", "archived"] },
+                  "confidentiality_level": { "type": "string", "enum": ["public", "internal", "confidential", "restricted"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Document updated" },
+          "403": { "description": "Insufficient permissions" }
+        }
+      },
+      "delete": {
+        "tags": ["DMS - Documents"],
+        "summary": "Delete document",
+        "description": "Soft delete document. Requires write permission.",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "204": { "description": "Document deleted" },
+          "403": { "description": "Insufficient permissions" }
+        }
+      }
+    },
+    "/dms/documents/{document_id}/download-url": {
+      "get": {
+        "tags": ["DMS - Documents"],
+        "summary": "Get presigned S3 download URL",
+        "description": "Generate presigned URL for direct S3 download. Includes permission check and audit logging.",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "version_number",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer" },
+            "description": "Specific version to download (defaults to latest)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Presigned download URL generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "download_url": { "type": "string", "description": "Presigned S3 URL for GET request" },
+                    "filename": { "type": "string" },
+                    "expires_in": { "type": "integer", "example": 300 }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "description": "No permission to access document" }
+        }
+      }
+    },
+    "/dms/documents/{document_id}/versions": {
+      "get": {
+        "tags": ["DMS - Documents"],
+        "summary": "Get document version history",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Version history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "string", "format": "uuid" },
+                      "version_number": { "type": "integer" },
+                      "size_bytes": { "type": "integer" },
+                      "uploaded_by": { "type": "string", "format": "uuid" },
+                      "change_summary": { "type": "string" },
+                      "created_at": { "type": "string", "format": "date-time" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dms/documents/{document_id}/permissions": {
+      "get": {
+        "tags": ["DMS - Documents"],
+        "summary": "Get document permissions",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "string", "format": "uuid" },
+                      "user_id": { "type": "string", "format": "uuid" },
+                      "permission_level": { "type": "string", "enum": ["read", "write", "admin"] },
+                      "granted_by": { "type": "string", "format": "uuid" },
+                      "valid_until": { "type": "string", "format": "date-time", "nullable": true }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["DMS - Documents"],
+        "summary": "Grant document permission",
+        "description": "Grant explicit permission to user. Requires admin permission on document.",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["user_id", "permission_level"],
+                "properties": {
+                  "user_id": { "type": "string", "format": "uuid" },
+                  "permission_level": { "type": "string", "enum": ["read", "write", "admin"] },
+                  "valid_until": { "type": "string", "format": "date-time", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Permission granted" },
+          "403": { "description": "Insufficient permissions" }
+        }
+      }
+    },
+
+    "/ask-ai/chats": {
+      "get": {
+        "tags": ["Ask AI"],
+        "summary": "Get all chats for current user",
+        "responses": {
+          "200": {
+            "description": "List of chats",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChatMetadata"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Ask AI"],
+        "summary": "Create a new chat",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "drive_url": { "type": "string", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Chat created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ChatMetadata" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ask-ai/chats/{chat_id}": {
+      "get": {
+        "tags": ["Ask AI"],
+        "summary": "Get messages in a chat",
+        "parameters": [
+          {
+            "name": "chat_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chat messages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Message" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Ask AI"],
+        "summary": "Delete a chat",
+        "parameters": [
+          {
+            "name": "chat_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "204": { "description": "Chat deleted" }
+        }
+      },
+      "patch": {
+        "tags": ["Ask AI"],
+        "summary": "Rename a chat",
+        "parameters": [
+          {
+            "name": "chat_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" }
+                },
+                "required": ["title"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Chat renamed" }
+        }
+      }
+    },
+    "/ask-ai/chats/{chat_id}/messages": {
+      "post": {
+        "tags": ["Ask AI"],
+        "summary": "Send a message with RAG context",
+        "description": "Send message and get AI response with relevant context from user's accessible DMS documents",
+        "parameters": [
+          {
+            "name": "chat_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": { "type": "string" }
+                },
+                "required": ["message"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "AI response with sources from DMS",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "reply": { "type": "string" },
+                    "sources": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Source" }
+                    },
+                    "message_count": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ask-ai/chats/{chat_id}/import-dms-folder": {
+      "post": {
+        "tags": ["Ask AI - DMS Integration"],
+        "summary": "Import DMS folder into chat context",
+        "description": "Imports all accessible documents from a DMS folder into the chat for RAG",
+        "parameters": [
+          {
+            "name": "chat_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["folder_id"],
+                "properties": {
+                  "folder_id": { "type": "string", "format": "uuid" },
+                  "include_subfolders": { "type": "boolean", "default": false }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Folder imported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "documents_imported": { "type": "integer" },
+                    "task_id": { "type": "string", "description": "Celery task ID for embedding generation" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/tenderiq/tenders": {
+      "get": {
+        "tags": ["TenderIQ - Tender Management"],
+        "summary": "Get all tenders",
+        "responses": {
+          "200": {
+            "description": "List of tenders",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Tender" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tenderiq/tenders/{tender_id}/save-to-dms": {
+      "post": {
+        "tags": ["TenderIQ - DMS Integration"],
+        "summary": "Save tender documents to DMS",
+        "description": "Creates folder /Tenders/[Year]/[TenderName] and saves all tender documents",
+        "parameters": [
+          {
+            "name": "tender_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Tender saved to DMS",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "folder_id": { "type": "string", "format": "uuid" },
+                    "folder_path": { "type": "string" },
+                    "documents_saved": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/legaliq/cases/{case_id}/save-to-dms": {
+      "post": {
+        "tags": ["LegalIQ - DMS Integration"],
+        "summary": "Save case documents to DMS",
+        "description": "Creates folder /Legal/Cases/[CaseNumber] and saves all case documents",
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Case saved to DMS",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "folder_id": { "type": "string", "format": "uuid" },
+                    "folder_path": { "type": "string" },
+                    "documents_saved": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/platform/dashboard/summary": {
+      "get": {
+        "tags": ["Platform - Dashboard"],
+        "summary": "Get platform-wide dashboard summary",
+        "responses": {
+          "200": {
+            "description": "Platform summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "active_users": { "type": "integer" },
+                    "active_users_trend": { "type": "number" },
+                    "ai_queries_today": { "type": "integer" },
+                    "ai_queries_today_trend": { "type": "number" },
+                    "tenders_analyzed": { "type": "integer" },
+                    "active_cases": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/platform/dashboard/recent-activity": {
+      "get": {
+        "tags": ["Platform - Dashboard"],
+        "summary": "Get recent activity across all modules",
+        "description": "Returns unified activity stream from all accessible modules",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20 }
+          },
+          {
+            "name": "module",
+            "in": "query",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recent activities",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "string" },
+                      "type": { "type": "string", "enum": ["document", "chat", "analysis", "case", "tender"] },
+                      "title": { "type": "string" },
+                      "module": { "type": "string" },
+                      "timestamp": { "type": "string", "format": "date-time" },
+                      "status": { "type": "string", "enum": ["complete", "in_progress", "pending"] },
+                      "icon": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/platform/search": {
+      "get": {
+        "tags": ["Platform - Search"],
+        "summary": "Global search across all accessible modules",
+        "description": "Permission-aware search across DMS documents, cases, tenders, chats",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "module",
+            "in": "query",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "documents": { "type": "array", "items": { "$ref": "#/components/schemas/Document" } },
+                    "cases": { "type": "array", "items": { "$ref": "#/components/schemas/Case" } },
+                    "tenders": { "type": "array", "items": { "$ref": "#/components/schemas/Tender" } },
+                    "total": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
