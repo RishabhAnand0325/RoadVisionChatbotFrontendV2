@@ -49,8 +49,6 @@ const LiveTenders = ({ onBack }: LiveTendersProps) => {
     cats.map(cat => {
       if (cat.includes("Civil")) {
         setSelectedCategory(cat);
-      } else {
-        setSelectedCategory("all");
       }
     })
     return ["all", ...cats];
