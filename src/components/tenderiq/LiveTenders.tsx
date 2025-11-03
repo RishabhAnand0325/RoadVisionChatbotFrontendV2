@@ -46,6 +46,13 @@ const LiveTenders = ({ onBack }: LiveTendersProps) => {
   // Extract unique categories and locations
   const categories = useMemo(() => {
     const cats = getAvailableCategories(tenders);
+    cats.map(cat => {
+      if (cat.includes("Civil")) {
+        setSelectedCategory(cat);
+      } else {
+        setSelectedCategory("all");
+      }
+    })
     return ["all", ...cats];
   }, [tenders]);
 
