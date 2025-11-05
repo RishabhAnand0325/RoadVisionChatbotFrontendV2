@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { useAnalyzeTender } from '@/hooks/useAnalyzeTender';
 import { fetchTenderById } from '@/lib/api/tenderiq';
 import { useState, useEffect } from 'react';
+import { DocumentAnalysisResult } from '@/lib/types/analyze-document';
 
 export default function AnalyzeTender() {
   const { id } = useParams();
@@ -48,31 +49,25 @@ export default function AnalyzeTender() {
     loadTender();
   }, [id]);
 
-  const mockRFPSections = [
-    {
-      clause: '1.1',
-      title: 'Project Scope',
-      extractedText: 'Construction of 4-lane highway with interchanges, service roads, and drainage...',
-      aiComment: 'Standard scope definition - Low Risk',
-      riskLevel: 'low' as const,
-    },
-    {
-      clause: '3.2',
-      title: 'Financial Requirements',
-      extractedText: 'EMD of ₹9 Cr required, Performance Bank Guarantee of 10% of contract value...',
-      aiComment: 'High financial requirements - Review liquidity',
-      riskLevel: 'medium' as const,
-    },
-    {
-      clause: '5.4',
-      title: 'Technical Qualifications',
-      extractedText: 'Minimum 3 similar projects worth ₹300 Cr each in last 7 years...',
-      aiComment: 'CRITICAL: Experience threshold very high',
-      riskLevel: 'high' as const,
-    },
-  ];
+  const analysisResults = analysis.analysisResults as DocumentAnalysisResult | null;
+  const isAnalysisComplete = analysis.analysisStatus?.status === 'completed' || analysisResults;
 
-  const isAnalysisComplete = analysis.analysisStatus?.status === 'completed' || analysis.analysisResults;
+  const rfpSections =
+    analysisResults?.extractedFacts?.keyClauses.map((clauseStr) => {
+      const match = clauseStr.match(/Clause\s*([\d.]+)\s*-\s*(.*)/);
+      const clause = match ? match[1] : 'N/A';
+      const title = match ? match[2] : clauseStr;
+
+      const risk = analysisResults?.riskAnalysis.find((r) => r.title.includes(title));
+
+      return {
+        clause,
+        title,
+        extractedText: risk?.description || 'No detailed analysis available.',
+        aiComment: risk ? risk.title : 'No AI comment.',
+        riskLevel: risk ? risk.level : ('low' as const),
+      };
+    }) || [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -229,20 +224,26 @@ export default function AnalyzeTender() {
               <Card className="p-6">
                 <h3 className="font-semibold text-lg mb-4">Risk Summary</h3>
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-destructive/10">
-                    <AlertTriangle className="h-5 w-5 text-destructive" />
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">High Risk: Technical Qualifications</p>
-                      <p className="text-xs text-muted-foreground">Experience threshold requires careful review</p>
+                  {analysisResults?.riskAnalysis.map((risk, index) => (
+                    <div
+                      key={index}
+                      className={`flex items-center gap-3 p-3 rounded-lg ${
+                        risk.level === 'high'
+                          ? 'bg-destructive/10'
+                          : risk.level === 'medium'
+                          ? 'bg-warning/10'
+                          : 'bg-green-100'
+                      }`}
+                    >
+                      {risk.level === 'high' && <AlertTriangle className="h-5 w-5 text-destructive" />}
+                      {risk.level === 'medium' && <Info className="h-5 w-5 text-warning" />}
+                      {risk.level === 'low' && <CheckCircle className="h-5 w-5 text-green-600" />}
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{risk.title}</p>
+                        <p className="text-xs text-muted-foreground">{risk.description}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-warning/10">
-                    <Info className="h-5 w-5 text-warning" />
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">Medium Risk: Financial Requirements</p>
-                      <p className="text-xs text-muted-foreground">High EMD and bank guarantee amounts</p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </Card>
             </TabsContent>
@@ -293,7 +294,7 @@ export default function AnalyzeTender() {
                   <Button variant="outline">Export Analysis (Excel)</Button>
                 </div>
                 <div className="space-y-4">
-                  {mockRFPSections.map((section) => (
+                  {rfpSections.map((section) => (
                     <Card key={section.clause} className="p-4">
                       <div className="grid grid-cols-12 gap-4 items-start">
                         <div className="col-span-2">
