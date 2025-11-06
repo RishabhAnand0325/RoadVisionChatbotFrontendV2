@@ -1,4 +1,4 @@
-import { Download, Star, FileText, AlertCircle, MapPin, Calendar, DollarSign } from 'lucide-react';
+import { Download, Star, FileText, AlertCircle, MapPin, Calendar, DollarSign, Heart, Archive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,10 @@ interface TenderDetailsUIProps {
   tender: TenderDetailsType;
   isWishlisted: boolean;
   onAddToWishlist: () => void;
+  isFavorited: boolean;
+  onToggleFavorite: () => void;
+  isArchived: boolean;
+  onToggleArchive: () => void;
   onNavigate: (path: string) => void;
 }
 
@@ -16,6 +20,10 @@ export default function TenderDetailsUI({
   tender,
   isWishlisted,
   onAddToWishlist,
+  isFavorited,
+  onToggleFavorite,
+  isArchived,
+  onToggleArchive,
   onNavigate,
 }: TenderDetailsUIProps) {
   return (
@@ -52,8 +60,16 @@ export default function TenderDetailsUI({
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onAddToWishlist}>
-              <Star className={`h-4 w-4 mr-2 ${isWishlisted ? 'fill-warning text-warning' : ''}`} />
-              {isWishlisted ? 'In Wishlist' : 'Add to Wishlist'}
+              <Star className={`h-4 w-4 mr-2 ${isWishlisted ? 'fill-yellow-400 text-yellow-500' : ''}`} />
+              {isWishlisted ? 'Wishlisted' : 'Wishlist'}
+            </Button>
+            <Button variant="outline" onClick={onToggleFavorite}>
+              <Heart className={`h-4 w-4 mr-2 ${isFavorited ? 'fill-red-500 text-red-500' : ''}`} />
+              {isFavorited ? 'Favorited' : 'Favorite'}
+            </Button>
+            <Button variant="outline" onClick={onToggleArchive}>
+              <Archive className={`h-4 w-4 mr-2 ${isArchived ? 'fill-current' : ''}`} />
+              {isArchived ? 'Archived' : 'Archive'}
             </Button>
           </div>
         </div>

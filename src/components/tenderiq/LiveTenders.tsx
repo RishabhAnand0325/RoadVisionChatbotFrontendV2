@@ -1,14 +1,17 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, RefreshCw, ExternalLink, MessageSquare, MapPin, Calendar, IndianRupee, Loader2, Heart, History } from "lucide-react";
+import { Search, Filter, RefreshCw, ExternalLink, MessageSquare, MapPin, Calendar, IndianRupee, Loader2, Heart, History, Star, Archive } from "lucide-react";
 import { Tender } from "@/lib/types/tenderiq";
 import { filterTenders, groupTendersByCategory, getAvailableCategories, getAvailableLocations } from "@/lib/utils/tender-filters";
 import { useLiveFilters } from "@/hooks/useLiveFilters";
 import DateSelector from "./DateSelector";
+import { useToast } from "@/hooks/use-toast";
+import { performTenderAction, fetchWishlistedTenders, fetchFavoriteTenders, fetchArchivedTenders } from "@/lib/api/tenderiq";
 
 interface LiveTendersProps {
   onBack?: () => void;
@@ -16,6 +19,8 @@ interface LiveTendersProps {
 
 const LiveTenders = ({ onBack }: LiveTendersProps) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedLocation, setSelectedLocation] = useState("all");
@@ -36,6 +41,43 @@ const LiveTenders = ({ onBack }: LiveTendersProps) => {
     minValue: minValue ? parseFloat(minValue) * 10000000 : null, // Convert crores to rupees
     maxValue: maxValue ? parseFloat(maxValue) * 10000000 : null, // Convert crores to rupees
   });
+
+  const { data: wishlist } = useQuery<Tender[], Error>({
+    queryKey: ['wishlist'],
+    queryFn: fetchWishlistedTenders,
+  });
+  const { data: favorites } = useQuery<Tender[], Error>({
+    queryKey: ['favorites'],
+    queryFn: fetchFavoriteTenders,
+  });
+  const { data: archived } = useQuery<Tender[], Error>({
+    queryKey: ['archived'],
+    queryFn: fetchArchivedTenders,
+  });
+
+  const isWishlisted = (tenderId: string) => wishlist?.some(t => t.id === tenderId) ?? false;
+  const isFavorited = (tenderId: string) => favorites?.some(t => t.id === tenderId) ?? false;
+  const isArchived = (tenderId: string) => archived?.some(t => t.id === tenderId) ?? false;
+
+  const handleToggleAction = async (tenderId: string, action: 'toggle_wishlist' | 'toggle_favorite' | 'toggle_archive') => {
+    try {
+      await performTenderAction(tenderId, { action });
+      let title = '';
+      if (action === 'toggle_wishlist') {
+        await queryClient.invalidateQueries({ queryKey: ['wishlist'] });
+        title = isWishlisted(tenderId) ? 'Removed from wishlist' : 'Added to wishlist';
+      } else if (action === 'toggle_favorite') {
+        await queryClient.invalidateQueries({ queryKey: ['favorites'] });
+        title = isFavorited(tenderId) ? 'Removed from favorites' : 'Added to favorites';
+      } else if (action === 'toggle_archive') {
+        await queryClient.invalidateQueries({ queryKey: ['archived'] });
+        title = isArchived(tenderId) ? 'Removed from archive' : 'Tender archived';
+      }
+      toast({ title, description: 'Tender updated successfully' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to update tender', variant: 'destructive' });
+    }
+  };
 
   const handleDateSelect = (date: string | null, dateRange: string | null, includeAll: boolean) => {
     setSelectedDate(date || undefined);
@@ -218,14 +260,27 @@ const LiveTenders = ({ onBack }: LiveTendersProps) => {
                       </div>
 
                       <div className="flex-1 space-y-3">
-                        <div>
-                          <h3 className="text-lg font-bold text-foreground">{tender.title}</h3>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                            <MapPin className="h-4 w-4" />
-                            <span>{tender.location}</span>
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h3 className="text-lg font-bold text-foreground">{tender.title}</h3>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                              <MapPin className="h-4 w-4" />
+                              <span>{tender.location}</span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <p className="text-sm font-mono bg-primary/10 text-primary px-2 py-1 rounded inline-block">{tender.authority}</p>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <p className="text-sm font-mono bg-primary/10 text-primary px-2 py-1 rounded inline-block">{tender.authority}</p>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleToggleAction(tender.id, 'toggle_wishlist')}>
+                              <Star className={`h-4 w-4 ${isWishlisted(tender.id) ? 'fill-yellow-400 text-yellow-500' : ''}`} />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleToggleAction(tender.id, 'toggle_favorite')}>
+                              <Heart className={`h-4 w-4 ${isFavorited(tender.id) ? 'fill-red-500 text-red-500' : ''}`} />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleToggleAction(tender.id, 'toggle_archive')}>
+                              <Archive className={`h-4 w-4 ${isArchived(tender.id) ? 'fill-current' : ''}`} />
+                            </Button>
                           </div>
                         </div>
 

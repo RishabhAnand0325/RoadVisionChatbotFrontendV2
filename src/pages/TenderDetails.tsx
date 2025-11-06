@@ -6,7 +6,12 @@ import { fetchTenderById } from '@/lib/api/tenderiq';
 import { TenderDetailsType } from '@/lib/types/tenderiq';
 import TenderDetailsUI from '@/components/tenderiq/TenderDetailsUI';
 import { Button } from '@/components/ui/button';
-import { performTenderAction, fetchWishlistedTenders } from '@/lib/api/tenderiq';
+import {
+  performTenderAction,
+  fetchWishlistedTenders,
+  fetchFavoriteTenders,
+  fetchArchivedTenders,
+} from '@/lib/api/tenderiq';
 import { Tender } from '@/lib/types/tenderiq';
 
 export default function TenderDetails() {
@@ -26,7 +31,19 @@ export default function TenderDetails() {
     queryFn: fetchWishlistedTenders,
   });
 
+  const { data: favorites } = useQuery<Tender[], Error>({
+    queryKey: ['favorites'],
+    queryFn: fetchFavoriteTenders,
+  });
+
+  const { data: archived } = useQuery<Tender[], Error>({
+    queryKey: ['archived'],
+    queryFn: fetchArchivedTenders,
+  });
+
   const isWishlisted = wishlist?.some((item) => item.id === id) ?? false;
+  const isFavorited = favorites?.some((item) => item.id === id) ?? false;
+  const isArchived = archived?.some((item) => item.id === id) ?? false;
 
   const handleAddToWishlist = async () => {
     if (!tender) return;
@@ -39,6 +56,34 @@ export default function TenderDetails() {
       queryClient.invalidateQueries({ queryKey: ['wishlist'] });
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to update wishlist', variant: 'destructive' });
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!tender) return;
+    try {
+      await performTenderAction(tender.id, { action: 'toggle_favorite' });
+      toast({
+        title: isFavorited ? 'Removed from favorites' : 'Added to favorites',
+        description: 'Tender favorites updated successfully',
+      });
+      queryClient.invalidateQueries({ queryKey: ['favorites'] });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to update favorites', variant: 'destructive' });
+    }
+  };
+
+  const handleToggleArchive = async () => {
+    if (!tender) return;
+    try {
+      await performTenderAction(tender.id, { action: 'toggle_archive' });
+      toast({
+        title: isArchived ? 'Removed from archive' : 'Tender archived',
+        description: 'Tender archive updated successfully',
+      });
+      queryClient.invalidateQueries({ queryKey: ['archived'] });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to update archive', variant: 'destructive' });
     }
   };
   
@@ -78,6 +123,10 @@ export default function TenderDetails() {
       tender={tender}
       isWishlisted={isWishlisted}
       onAddToWishlist={handleAddToWishlist}
+      isFavorited={isFavorited}
+      onToggleFavorite={handleToggleFavorite}
+      isArchived={isArchived}
+      onToggleArchive={handleToggleArchive}
       onNavigate={handleNavigate}
     />
   );
