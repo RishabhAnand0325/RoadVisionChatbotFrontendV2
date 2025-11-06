@@ -1,17 +1,19 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { addToWishlist, isInWishlist } from '@/data/sampleTenders';
 import { fetchTenderById } from '@/lib/api/tenderiq';
 import { TenderDetailsType } from '@/lib/types/tenderiq';
 import TenderDetailsUI from '@/components/tenderiq/TenderDetailsUI';
 import { Button } from '@/components/ui/button';
+import { addToWishlist, fetchWishlist } from '@/lib/api/wishlist';
+import { WishlistItem } from '@/lib/types/wishlist';
 
 export default function TenderDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: tender, isLoading, isError } = useQuery<TenderDetailsType, Error>({
     queryKey: ['tenderDetails', id],
@@ -19,14 +21,26 @@ export default function TenderDetails() {
     enabled: !!id,
   });
 
-  const handleAddToWishlist = () => {
+  const { data: wishlist } = useQuery<WishlistItem[], Error>({
+    queryKey: ['wishlist'],
+    queryFn: async () => (await fetchWishlist()).items,
+  });
+
+  const isWishlisted = wishlist?.some((item) => item.id === id) ?? false;
+
+  const handleAddToWishlist = async () => {
     if (!tender) return;
-    if (isInWishlist(tender.id)) {
+    if (isWishlisted) {
       toast({ title: 'Already in wishlist' });
       return;
     }
-    addToWishlist(tender.id);
-    toast({ title: 'Added to wishlist', description: 'Tender saved successfully' });
+    try {
+      await addToWishlist(tender.id);
+      toast({ title: 'Added to wishlist', description: 'Tender saved successfully' });
+      queryClient.invalidateQueries({ queryKey: ['wishlist'] });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to add to wishlist', variant: 'destructive' });
+    }
   };
   
   const handleNavigate = (path: string) => {
@@ -63,7 +77,7 @@ export default function TenderDetails() {
   return (
     <TenderDetailsUI
       tender={tender}
-      isWishlisted={isInWishlist(tender.id)}
+      isWishlisted={isWishlisted}
       onAddToWishlist={handleAddToWishlist}
       onNavigate={handleNavigate}
     />

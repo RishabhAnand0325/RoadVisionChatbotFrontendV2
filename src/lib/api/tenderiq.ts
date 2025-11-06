@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '@/lib/config/api';
+import { getAuthHeaders } from '@/lib/api/authHelper';
 import { Document, Tender, TenderDetailsType, TenderDocument, ScrapedTenderFile, ScrapedTender, TenderApiResponse, AvailableDate, FilteredTendersResponse } from '@/lib/types/tenderiq';
 
 // Transform API response to frontend format
@@ -49,21 +50,29 @@ const parseCurrency = (value: string | null | undefined): number | null => {
   return null;
 };
 
-export const fetchDailyTenders = async (): Promise<Tender[]> => {
-  console.log('Fetching daily tenders from:', `${API_BASE_URL}/tenderiq/dailytenders`);
+/**
+ * Get the latest scraped date (extracted from last API response)
+ * This is stored when fetchDailyTenders or fetchFilteredTenders is called
+ */
+let latestScrapedDate: { date: string; dateStr: string } | null = null;
 
-  const token = localStorage.getItem('token');
-  console.log('Auth token present:', !!token);
+export const getLatestScrapedDate = (): { date: string; dateStr: string } | null => {
+  return latestScrapedDate;
+};
+
+/**
+ * Fetch tenders for the latest scraped date (main source)
+ * The /tenders endpoint returns latest date tenders by default when called without parameters
+ * @returns Array of tenders for the latest date
+ */
+export const fetchDailyTenders = async (): Promise<Tender[]> => {
+  console.log('Fetching daily tenders from latest scraped date');
 
   try {
-    const response = await fetch(`${API_BASE_URL}/tenderiq/dailytenders`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+    // Call /tenders without parameters - returns tenders for latest scraped date
+    const response = await fetch(`${API_BASE_URL}/tenderiq/tenders`, {
+      headers: getAuthHeaders(),
     });
-
-    console.log('Response status:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -72,16 +81,26 @@ export const fetchDailyTenders = async (): Promise<Tender[]> => {
     }
 
     const data: TenderApiResponse = await response.json();
-    console.log('Raw API response:', data);
+    console.log('Daily tenders API response:', data);
 
-    // Extract all tenders from all queries
+    // Store the latest scraped date from response
+    if (data.date_str) {
+      // Extract date from run_at timestamp
+      const dateMatch = data.run_at.match(/(\d{4}-\d{2}-\d{2})/);
+      const dateStr = dateMatch ? dateMatch[1] : data.date_str;
+      latestScrapedDate = {
+        date: dateStr,
+        dateStr: data.date_str,
+      };
+      console.log('Latest scraped date:', latestScrapedDate);
+    }
+
+    // Extract and transform all tenders from queries
     const allTenders: Tender[] = [];
 
     if (data.queries && Array.isArray(data.queries)) {
       data.queries.forEach(query => {
         const category = query.query_name || 'Uncategorized';
-        console.log(`Processing category: ${category}, tenders count: ${query.tenders?.length || 0}`);
-
         if (query.tenders && Array.isArray(query.tenders)) {
           query.tenders.forEach(tender => {
             allTenders.push(transformTender(tender, category));
@@ -90,9 +109,7 @@ export const fetchDailyTenders = async (): Promise<Tender[]> => {
       });
     }
 
-    console.log('Transformed tenders count:', allTenders.length);
-    console.log('Sample transformed tender:', allTenders[0]);
-
+    console.log('Transformed daily tenders count:', allTenders.length);
     return allTenders;
   } catch (error) {
     console.error('Error in fetchDailyTenders:', error);
@@ -103,19 +120,15 @@ export const fetchDailyTenders = async (): Promise<Tender[]> => {
 
 /**
  * Fetch available scrape dates from the backend
+ * Used by date selector to show available dates with tender counts
  * @returns Array of available dates with metadata
  */
 export const fetchAvailableDates = async (): Promise<AvailableDate[]> => {
   console.log('Fetching available dates from:', `${API_BASE_URL}/tenderiq/dates`);
 
-  const token = localStorage.getItem('token');
-
   try {
     const response = await fetch(`${API_BASE_URL}/tenderiq/dates`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -136,8 +149,9 @@ export const fetchAvailableDates = async (): Promise<AvailableDate[]> => {
 
 /**
  * Fetch filtered tenders with date and other filters
+ * Uses the /tenders endpoint which now returns the same format as /dailytenders
  * @param params - Filter parameters (date, date_range, include_all_dates, category, location, min_value, max_value)
- * @returns Filtered tenders response
+ * @returns Filtered tenders response with transformed tenders
  */
 export const fetchFilteredTenders = async (params: {
   date?: string;
@@ -148,7 +162,6 @@ export const fetchFilteredTenders = async (params: {
   min_value?: number;
   max_value?: number;
 }): Promise<FilteredTendersResponse> => {
-  const token = localStorage.getItem('token');
   const queryParams = new URLSearchParams();
 
   if (params.date) queryParams.append('date', params.date);
@@ -164,10 +177,7 @@ export const fetchFilteredTenders = async (params: {
 
   try {
     const response = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -176,17 +186,30 @@ export const fetchFilteredTenders = async (params: {
       throw new Error(`Failed to fetch filtered tenders: ${response.status} ${errorText}`);
     }
 
-    const data = await response.json();
-    console.log('Filtered tenders response:', data);
+    const data: TenderApiResponse = await response.json();
+    console.log('Filtered tenders API response:', data);
 
-    // Transform tenders if needed
-    const transformedTenders: Tender[] = (data.tenders || []).map((t: ScrapedTender) => transformTender(t, t.category || 'Uncategorized'));
+    // Extract and transform all tenders from queries (same format as dailytenders)
+    const allTenders: Tender[] = [];
+
+    if (data.queries && Array.isArray(data.queries)) {
+      data.queries.forEach(query => {
+        const category = query.query_name || 'Uncategorized';
+        if (query.tenders && Array.isArray(query.tenders)) {
+          query.tenders.forEach(tender => {
+            allTenders.push(transformTender(tender, category));
+          });
+        }
+      });
+    }
+
+    console.log('Transformed filtered tenders count:', allTenders.length);
 
     return {
-      tenders: transformedTenders,
-      total_count: data.total_count || transformedTenders.length,
-      filtered_by: data.filtered_by || {},
-      available_dates: data.available_dates || [],
+      tenders: allTenders,
+      total_count: allTenders.length,
+      filtered_by: {},
+      available_dates: [],
     };
   } catch (error) {
     console.error('Error in fetchFilteredTenders:', error);
@@ -201,15 +224,11 @@ export const fetchFilteredTenders = async (params: {
  */
 export const fetchTenderById = async (id: string): Promise<TenderDetailsType> => {
   console.log(`Fetching tender details for id: ${id}`);
-  const token = localStorage.getItem('token');
   const url = `${API_BASE_URL}/tenderiq/tenders/${id}`;
 
   try {
     const response = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
     });
 
     if (!response.ok) {
