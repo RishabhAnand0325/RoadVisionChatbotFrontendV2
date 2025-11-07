@@ -308,7 +308,7 @@ const LiveTenders = ({ onBack }: LiveTendersProps) => {
                           </Button>
                           <Button size="sm" variant="outline" className="hover-scale">
                             <MessageSquare className="h-4 w-4 mr-2" />
-                            Chat with RoadGPT
+                            Chat with CeigallAI
                           </Button>
                         </div>
                       </div>
