@@ -11,6 +11,7 @@ import PlatformDashboard from "./pages/PlatformDashboard";
 import LegalIQDashboard from "./pages/LegalIQDashboard";
 import DMS from "./pages/DMS";
 import TenderIQ from "./pages/TenderIQ";
+import BidSynopsis from "./pages/BidSynopsis/BidSynopsis";
 import TenderDetails from "./pages/TenderDetails/TenderDetails";
 import AnalyzeTender from "./pages/AnalyzeTender";
 import WishlistHistory from "./pages/WishlistHistory/WishlistHistory";
@@ -57,6 +58,8 @@ const App = () => (
           <Route path="/tenderiq/view/:id" element={<ProtectedRoute><AppLayout><TenderDetails /></AppLayout></ProtectedRoute>} />
           <Route path="/tenderiq/analyze/:id" element={<ProtectedRoute><AppLayout><AnalyzeTender /></AppLayout></ProtectedRoute>} />
           <Route path="/tenderiq/wishlist-history" element={<ProtectedRoute><AppLayout><WishlistHistory /></AppLayout></ProtectedRoute>} />
+
+          <Route path="/synopsis/:id" element={<AppLayout><BidSynopsis /></AppLayout>} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>
