@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Query, Report, Tender } from '@/lib/types/tenderiq.types';
 import { useEffect, useState } from 'react';
+import { getCurrencyNumberFromText, getCurrencyTextFromNumber } from '@/lib/utils/conversions';
 
 interface LiveTendersUIProps {
   report: Report | undefined;
@@ -42,7 +43,7 @@ export default function LiveTendersUI({
           || query.query_name.toLowerCase().includes(searchQuery.toLowerCase())
           || tender.company_name.toLowerCase().includes(searchQuery.toLowerCase())
           || tender.state.toLowerCase().includes(searchQuery.toLowerCase()))
-          && parseFloat(tender.tender_value) >= (parseFloat(minPrice) || 0) * 10000000) {
+          && getCurrencyNumberFromText(tender.tender_value) >= (parseFloat(minPrice) || 0) * 10000000) {
           tenders.push(tender)
         }
       })
