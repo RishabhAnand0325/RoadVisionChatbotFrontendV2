@@ -3,7 +3,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Heart, Trash2, MapPin, IndianRupee, Calendar, Loader2 } from 'lucide-react';
-import { Tender } from '@/lib/types/tenderiq';
 import { performTenderAction, fetchWishlistedTenders } from '@/lib/api/tenderiq';
 import { useToast } from '@/hooks/use-toast';
 import { getHistoryWishlistData } from '@/lib/api/wishlist';
@@ -14,7 +13,7 @@ import { useEffect, useState } from 'react';
 const WishlistHistory = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  // const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
   //
   // const { data: wishlistItems = [], isLoading } = useQuery<HistoryPageResponse, Error>({
   //   queryKey: ['wishlist'],
@@ -24,6 +23,17 @@ const WishlistHistory = () => {
   const [wishlistItems, setWishlistItems] = useState<HistoryPageResponse>()
   const [isLoading, setIsLoading] = useState(true)
 
+  const fetchWishlist = async () => {
+    try {
+      const wishlistItems = await getHistoryWishlistData();
+      console.log(wishlistItems)
+      setWishlistItems(wishlistItems);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error fetching wishlist:', error);
+    }
+  };
+
   const handleRemoveFromWishlist = async (id: string) => {
     try {
       await performTenderAction(id, { action: 'toggle_wishlist' });
@@ -32,6 +42,7 @@ const WishlistHistory = () => {
         description: 'Tender removed successfully.',
       });
       await queryClient.invalidateQueries({ queryKey: ['wishlist'] });
+      fetchWishlist()
     } catch (error) {
       toast({
         title: 'Error',
@@ -47,17 +58,6 @@ const WishlistHistory = () => {
   };
 
   useEffect(() => {
-    const fetchWishlist = async () => {
-      try {
-        const wishlistItems = await getHistoryWishlistData();
-        console.log(wishlistItems)
-        setWishlistItems(wishlistItems);
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Error fetching wishlist:', error);
-      }
-    };
-
     fetchWishlist();
   }, [])
 
