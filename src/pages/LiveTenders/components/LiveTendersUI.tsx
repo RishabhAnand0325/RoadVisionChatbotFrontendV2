@@ -138,7 +138,7 @@ export default function LiveTendersUI({
           <div className="">
             {filteredQueries.map((query) => (
               <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
-                {query.tenders.map((tender) => (
+                {query.tenders.map((tender, index) => (
                   <Card 
                     key={tender.id}
                     className="p-6 hover:shadow-lg transition-all cursor-pointer group"
@@ -147,7 +147,7 @@ export default function LiveTendersUI({
                       {/* Header */}
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="font-semibold text-base line-clamp-2 group-hover:text-primary transition-colors flex-1">
-                          {tender.tender_name}
+                          {index + 1}. {tender.tender_name}
                         </h3>
                         <Button
                           variant="ghost"
@@ -191,6 +191,16 @@ export default function LiveTendersUI({
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">EMD</span>
                           <span className="font-medium">{tender.emd}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Publish Date</span>
+                          <span className="font-medium">
+                            {new Date(tender.publish_date).toLocaleDateString('en-IN', { 
+                              day: 'numeric', 
+                              month: 'short', 
+                              year: 'numeric' 
+                            })}
+                          </span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Due Date</span>
