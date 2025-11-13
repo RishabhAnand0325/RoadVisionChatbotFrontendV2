@@ -230,6 +230,18 @@ export interface FullTenderDetails {
   tender_history: TenderHistoryItem[];
 }
 
+export interface ScrapeDate {
+  id: string;
+  date: string;
+  run_at: string;
+  tender_count: number;
+  is_latest: boolean;
+}
+
+export interface ScrapeDateResponse {
+  dates: ScrapeDate[];
+}
+
 /**
  * Interface for a single tender's details.
  */

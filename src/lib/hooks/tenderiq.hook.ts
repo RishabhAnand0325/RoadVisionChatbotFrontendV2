@@ -3,12 +3,12 @@ import { Report, SSEBatchTenders, StreamStatus } from "../types/tenderiq.types"
 import { API_BASE_URL } from "../config/api";
 
 
-export const useReportStream = () => {
+export const useReportStream = (run_id?: string) => {
   const [report, setReport] = useState<Report | null>(null);
   const [status, setStatus] = useState<StreamStatus>("idle")
 
   useEffect(() => {
-    const evtSource = new EventSource(`${API_BASE_URL}/tenderiq/tenders-sse`)
+    const evtSource = new EventSource(`${API_BASE_URL}/tenderiq/tenders-sse${run_id ? `?scrape_run_id=${run_id}` : ""}`)
     setStatus("streaming")
 
     const handleInitialData = (event: MessageEvent) => {
@@ -57,7 +57,7 @@ export const useReportStream = () => {
     evtSource.addEventListener("complete", handleComplete)
     evtSource.onerror = handleError
 
-  },[])
+  },[run_id])
 
   return { report, status }
 }

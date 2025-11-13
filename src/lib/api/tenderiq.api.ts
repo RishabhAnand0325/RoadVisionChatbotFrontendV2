@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "../config/api";
-import { FullTenderDetails, Report, Tender, TenderActionRequest } from "../types/tenderiq.types";
+import { FullTenderDetails, Report, ScrapeDateResponse, Tender, TenderActionRequest } from "../types/tenderiq.types";
 import { getCurrencyNumberFromText } from "../utils/conversions";
 import { getAuthHeaders } from "./authHelper";
 
@@ -74,6 +74,24 @@ export const fetchFullTenderDetails = async (tenderId: string): Promise<FullTend
     return data;
   } catch (error) {
     console.error(`Error in fetchTenderAnalysis for tender ${tenderId}:`, error);
+    throw error;
+  }
+}
+
+export const getScrapeDates = async (): Promise<ScrapeDateResponse> => {
+  const url = `${API_BASE_URL}/tenderiq/dates`
+  console.log(`Fetching available dates from:`, url);
+  try {
+    const response = await fetch(url, { headers: getAuthHeaders() });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to fetch available dates: ${response.status} ${errorText}`);
+    }
+    const data = await response.json() as ScrapeDateResponse;
+    console.log(`Available dates successful:`, data);
+    return data;
+  } catch (error) {
+    console.error(`Error in getScrapeDates:`, error);
     throw error;
   }
 }

@@ -3,9 +3,11 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Query, Report, Tender } from '@/lib/types/tenderiq.types';
+import { Query, Report, ScrapeDate, Tender } from '@/lib/types/tenderiq.types';
 import { useEffect, useState } from 'react';
 import { getCurrencyNumberFromText, getCurrencyTextFromNumber } from '@/lib/utils/conversions';
+import { Select, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import { SelectTrigger } from '@radix-ui/react-select';
 
 interface LiveTendersUIProps {
   report: Report | undefined;
@@ -13,6 +15,8 @@ interface LiveTendersUIProps {
   onViewTender: (tenderId: string) => void;
   onNavigateToWishlist: () => void;
   isInWishlist: (tenderId: string) => boolean;
+  onChangeDate: (date: string) => void;
+  dates: ScrapeDate[]
 }
 
 export default function LiveTendersUI({
@@ -21,6 +25,8 @@ export default function LiveTendersUI({
   onViewTender,
   onNavigateToWishlist,
   isInWishlist,
+  onChangeDate,
+  dates
 }: LiveTendersUIProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredQueries, setFilteredQueries] = useState<Query[]>(report ? report.queries : []);
@@ -116,6 +122,21 @@ export default function LiveTendersUI({
                 onChange={(e) => setMinPrice(e.target.value)}
               />
             </div>
+            <Select onValueChange={onChangeDate}>
+              <SelectTrigger className='px-2 py-1 bg-muted border rounded-md text-muted-foreground'>
+                <SelectValue placeholder="Select a date" />
+              </SelectTrigger>
+              <SelectContent>
+                {dates.map((date) => (
+                  <SelectItem
+                    key={date.id}
+                    value={date.id}
+                  >
+                    {date.date}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </Card>
 
