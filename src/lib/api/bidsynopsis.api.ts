@@ -10,11 +10,21 @@ export const fetchBidSynopsis = async (
   tenderId: string,
   tenderData?: BidSynopsisProps
 ): Promise<SynopsisContent> => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 300));
-  
-  // For now, return mock data
-  return generateMockSynopsisContent(tenderData || null);
+  const url = `${API_BASE_URL}/bidsynopsis/synopsis/${tenderId}`;
+  console.log(`Fetching bid synopsis for tender ${tenderId} from:`, url);
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to fetch bid synopsis: ${response.status} ${errorText}`);
+    }
+    const data = await response.json();
+    console.log(`Bid synopsis for tender ${tenderId} successful:`, data);
+    return data;
+  } catch (e) {
+    console.error(`Error in fetchBidSynopsis for tender ${tenderId}:`, e);
+    return null
+  }
 };
 
 /**
