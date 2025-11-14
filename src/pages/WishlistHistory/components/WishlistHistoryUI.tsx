@@ -26,7 +26,7 @@ export function TenderCard({ data, handleViewTender, handleRemoveFromWishlist }:
       <CardContent className="p-6 flex flex-col gap-2">
         <div className="flex justify-between items-center">
           <h3>{data.title}</h3>
-          <span className="bg-muted rounded-xl px-2 py-1 text-xs font-bold">{data.results}</span>
+          <span className="bg-muted rounded-xl px-2 py-1 text-xs font-bold">{data.analysis_state}</span>
         </div>
         <div className="text-sm text-muted-foreground">{data.authority}</div>
         <hr className="my-2" />
@@ -49,8 +49,8 @@ export function TenderCard({ data, handleViewTender, handleRemoveFromWishlist }:
           <div>Progress</div>
           <div className="flex gap-4 items-center">
             <div className="flex gap-1 items-center">
-              <span className={`text-xs ${data.analysis_state ? 'text-primary' : 'text-muted-foreground'}`}>Analysis</span>
-              {data.analysis_state ? <Check className="h-3 w-3 text-primary" /> : <Circle className="h-3 w-3 text-muted-foreground" />}
+              <span className={`text-xs ${data.analysis_state == "completed" ? 'text-primary' : 'text-muted-foreground'}`}>Analysis</span>
+              {data.analysis_state == "completed" ? <Check className="h-3 w-3 text-primary" /> : <Circle className="h-3 w-3 text-muted-foreground" />}
             </div>
             <div className="flex gap-1 items-center">
               <span className={`text-xs ${data.synopsis_state ? 'text-primary' : 'text-muted-foreground'}`}>Synopsis</span>

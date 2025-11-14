@@ -31,7 +31,7 @@ export interface HistoryData {
   due_date: string;
   category: string;
   progress: number;
-  analysis_state: boolean;
+  analysis_state: string;
   synopsis_state: boolean;
   evaluated_state: boolean;
   results: "won" | "rejected" | "incomplete" | "pending";
