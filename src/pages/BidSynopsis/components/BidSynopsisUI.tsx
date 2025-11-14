@@ -51,7 +51,7 @@ export default function BidSynopsisUI({
           </div>
         </div>
 
-        {/* Document Upload Section */}
+        {/* Document Upload Section
         <Card className="p-6 bg-muted/50">
           <div className="flex items-center gap-4">
             <Upload className="h-5 w-5 text-muted-foreground" />
@@ -70,6 +70,7 @@ export default function BidSynopsisUI({
             </div>
           </div>
         </Card>
+        */}
 
         <Tabs value={activeTab} onValueChange={onTabChange} className="space-y-6">
           <TabsList className="grid w-full max-w-md grid-cols-2">
@@ -170,15 +171,15 @@ export default function BidSynopsisUI({
             <Card className="p-8 bg-white dark:bg-background">
               <div className="max-w-5xl mx-auto space-y-8">
                 {/* Header */}
-                <div className="text-center border-b-2 border-foreground pb-6">
-                  <h1 className="text-3xl font-bold mb-4">BID SYNOPSIS</h1>
+                <div className="text-center border-foreground">
+                  <h1 className="text-2xl font-bold mb-4">BID SYNOPSIS</h1>
                 </div>
 
                 {/* Basic Information Table */}
                 <div>
                   <table className="w-full text-sm border-2 border-foreground">
                     <thead>
-                      <tr className="border-b-2 border-foreground bg-muted">
+                      <tr className="border-b-2 border-foreground bg-slate-400">
                         <th className="text-left p-3 border-r-2 border-foreground font-bold w-16">S.No</th>
                         <th className="text-left p-3 border-r-2 border-foreground font-bold w-48">ITEM</th>
                         <th className="text-left p-3 font-bold">DESCRIPTION</th>
@@ -198,12 +199,12 @@ export default function BidSynopsisUI({
 
                 {/* Qualification Criteria, Similar Work & Financial Capacity - Unified Table */}
                 <div className="page-break-before">
-                  <h2 className="text-2xl font-bold mb-4 text-center">QUALIFICATION CRITERIA, SIMILAR WORK & FINANCIAL CAPACITY</h2>
+                  <h2 className="text-2xl font-bold mb-4 text-center">QUALIFICATION CRITERIA</h2>
                   
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs border-2 border-foreground">
                       <thead>
-                        <tr className="border-b-2 border-foreground bg-muted">
+                        <tr className="border-b-2 border-foreground bg-slate-400">
                           <th className="text-left p-2 border-r-2 border-foreground font-bold align-top" style={{width: '15%'}}>DESCRIPTION</th>
                           <th className="text-left p-2 border-r-2 border-foreground font-bold align-top" style={{width: '50%'}}>REQUIREMENT</th>
                           <th className="text-left p-2 border-r-2 border-foreground font-bold align-top" style={{width: '10%'}}>Requirement</th>
