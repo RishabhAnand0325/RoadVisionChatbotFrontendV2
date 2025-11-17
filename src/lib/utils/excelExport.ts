@@ -3,21 +3,17 @@ import { WishlistReportData } from '../types/wishlist';
 import { format } from 'date-fns';
 
 /**
- * Generate and download an Excel file with wishlist report data
- * Creates a professional multi-sheet Excel workbook with summary and detailed data
+ * Generate and download an Excel file matching the client's TenderList.xlsx template
+ * Creates a single "Bidding" sheet with 21 columns exactly as specified by the client
  */
 export function generateWishlistExcel(reportData: WishlistReportData, filename: string = 'Wishlist_Report'): void {
   try {
     // Create a new workbook
     const workbook = XLSX.utils.book_new();
 
-    // === Sheet 1: Summary ===
-    const summarySheet = createSummarySheet(reportData);
-    XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
-
-    // === Sheet 2: Detailed Wishlist ===
-    const detailSheet = createDetailSheet(reportData);
-    XLSX.utils.book_append_sheet(workbook, detailSheet, 'Wishlist Details');
+    // Create the "Bidding" sheet with client template structure
+    const biddingSheet = createBiddingSheet(reportData);
+    XLSX.utils.book_append_sheet(workbook, biddingSheet, 'Bidding');
 
     // === Generate filename with timestamp ===
     const timestamp = format(new Date(reportData.generatedAt), 'yyyy-MM-dd_HHmmss');
@@ -32,132 +28,249 @@ export function generateWishlistExcel(reportData: WishlistReportData, filename: 
 }
 
 /**
- * Create the Summary sheet with metrics and financial overview
+ * Create the "Bidding" sheet matching client's TenderList.xlsx template
+ * 21 columns (A-U) with exact formatting and data mapping
  */
-function createSummarySheet(reportData: WishlistReportData): XLSX.WorkSheet {
-  const { metrics, generatedAt } = reportData;
+function createBiddingSheet(reportData: WishlistReportData): XLSX.WorkSheet {
+  const { tenders } = reportData;
 
-  // Prepare summary data for the sheet
-  const summaryData: any[] = [
-    ['WISHLIST REPORT - EXECUTIVE SUMMARY'],
-    [''],
-    [`Generated: ${format(new Date(generatedAt), 'MMM dd, yyyy HH:mm')}`],
-    [''],
-    ['STATUS OVERVIEW'],
-    ['Metric', 'Count', 'Percentage'],
-    ['Total Saved', metrics.totalSaved, '100%'],
-    ['Total Analyzed', metrics.totalAnalyzed, `${((metrics.totalAnalyzed / metrics.totalSaved) * 100).toFixed(1)}%`],
-    ['Total Won', metrics.totalWon, `${((metrics.totalWon / metrics.totalSaved) * 100).toFixed(1)}%`],
-    ['Total Pending', metrics.totalPending, `${((metrics.totalPending / metrics.totalSaved) * 100).toFixed(1)}%`],
-    ['Total Rejected', metrics.totalRejected, `${((metrics.totalRejected / metrics.totalSaved) * 100).toFixed(1)}%`],
-    ['Total Incomplete', metrics.totalIncomplete, `${((metrics.totalIncomplete / metrics.totalSaved) * 100).toFixed(1)}%`],
-    [''],
-    ['FINANCIAL SUMMARY'],
-    ['Metric', 'Amount (INR)'],
-    ['Total Tender Value', metrics.totalTenderValue],
-    ['Average Tender Value', metrics.averageTenderValue],
-    ['Total EMD', metrics.totalEMD],
-    ['Average EMD', metrics.averageEMD],
+  // Define column headers exactly as in client template
+  const headers = [
+    'S. No',                           // A
+    'Tender Id',                       // B
+    'Name of the Work',                // C
+    'Employer',                        // D
+    'State',                           // E
+    'Mode',                            // F
+    'Estimated Project Cost',          // G
+    'e-Published Date',                // H
+    'Tender Identification\nDate',     // I (with newline as in template)
+    'Last Date',                       // J
+    'BID Security in Cr.',             // K
+    'Length',                          // L
+    'Per Km Cost',                     // M
+    'Required Span Length',            // N
+    'Amount of Road Work',             // O
+    'Amount of Structure Work',        // P
+    'Remarks',                         // Q
+    'Current Status',                  // R
+    '',                                // S (empty)
+    '',                                // T (empty)
+    '',                                // U (empty)
   ];
 
-  const worksheet = XLSX.utils.aoa_to_sheet(summaryData);
+  // Prepare data rows with data mapping
+  const dataRows = tenders.map((tender) => {
+    const scraped = tender.full_scraped_details;
 
-  // Set column widths
-  worksheet['!cols'] = [
-    { wch: 25 }, // Column A
-    { wch: 15 }, // Column B
-    { wch: 15 }, // Column C
-  ];
+    // Extract numeric values for calculations
+    const estimatedCost = parseFloat(String(tender.value || 0));
+    const length = scraped ? parseFloat(String(scraped.total_length || 0)) : 0;
 
-  // Apply styling to headers (bold)
-  const headerRows = [0, 4, 13]; // Row indices for headers
-  headerRows.forEach((rowIdx) => {
-    const cell = worksheet[XLSX.utils.encode_cell({ r: rowIdx, c: 0 })];
-    if (cell) {
-      cell.s = { font: { bold: true, sz: 12 } };
-    }
+    // Build row array (will add formulas later)
+    return {
+      // A: S. No - Will be set as formula
+      sNo: null as any, // Placeholder, will be replaced with formula
+      // B: Tender Id
+      tenderId: scraped.tender_id_detail || '',
+      // C: Name of the Work
+      nameOfWork: tender.title || '',
+      // D: Employer
+      employer: tender.authority || scraped?.company_name || '',
+      // E: State
+      state: scraped?.state || '',
+      // F: Mode (Bidding Type)
+      mode: scraped?.bidding_type || '',
+      // G: Estimated Project Cost
+      estimatedCost: estimatedCost || null,
+      // H: e-Published Date
+      ePublishedDate: scraped?.publish_date || '',
+      // I: Tender Identification Date
+      tenderIdDate: scraped?.publish_date || '',
+      // J: Last Date
+      lastDate: tender.due_date || '',
+      // K: BID Security in Cr.
+      bidSecurity: tender.emd || null,
+      // L: Length
+      length: length || null,
+      // M: Per Km Cost - Formula: =G/L (will add formula if we have both values)
+      perKmCost: null as any, // Will be set as formula
+      // N: Required Span Length
+      requiredSpanLength: null,
+      // O: Amount of Road Work - Formula: =G*49.63%
+      roadWork: null as any, // Will be set as formula
+      // P: Amount of Structure Work - Formula: =G*50.37%
+      structureWork: null as any, // Will be set as formula
+      // Q: Remarks
+      remarks: scraped?.summary || '',
+      // R: Current Status
+      currentStatus: tender.results || '',
+      // S-U: Empty
+      empty1: '',
+      empty2: '',
+      empty3: '',
+    };
   });
+
+  // Convert data objects to array format for XLSX
+  const worksheetData: any[][] = [headers];
+
+  dataRows.forEach((row) => {
+    worksheetData.push([
+      row.sNo,               // A - Will replace with formula
+      row.tenderId,          // B
+      row.nameOfWork,        // C
+      row.employer,          // D
+      row.state,             // E
+      row.mode,              // F
+      row.estimatedCost,     // G
+      row.ePublishedDate,    // H
+      row.tenderIdDate,      // I
+      row.lastDate,          // J
+      row.bidSecurity,       // K
+      row.length,            // L
+      row.perKmCost,         // M - Will replace with formula
+      row.requiredSpanLength,// N
+      row.roadWork,          // O - Will replace with formula
+      row.structureWork,     // P - Will replace with formula
+      row.remarks,           // Q
+      row.currentStatus,     // R
+      row.empty1,            // S
+      row.empty2,            // T
+      row.empty3,            // U
+    ]);
+  });
+
+  // Create worksheet
+  const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+
+  // === Set exact column widths from client template ===
+  worksheet['!cols'] = [
+    { wch: 5.33 },    // A: S. No
+    { wch: 23.66 },   // B: Tender Id
+    { wch: 41.55 },   // C: Name of the Work
+    { wch: 30.55 },   // D: Employer
+    { wch: 17.44 },   // E: State
+    { wch: 11.66 },   // F: Mode
+    { wch: 9.33 },    // G: Estimated Project Cost
+    { wch: 15.33 },   // H: e-Published Date
+    { wch: 18.0 },    // I: Tender Identification Date
+    { wch: 13.78 },   // J: Last Date
+    { wch: 12.89 },   // K: BID Security in Cr.
+    { wch: 9.89 },    // L: Length
+    { wch: 9.44 },    // M: Per Km Cost
+    { wch: 14.0 },    // N: Required Span Length
+    { wch: 13.0 },    // O: Amount of Road Work
+    { wch: 15.33 },   // P: Amount of Structure Work
+    { wch: 56.11 },   // Q: Remarks
+    { wch: 40.33 },   // R: Current Status
+    { wch: 28.0 },    // S: Empty
+    { wch: 185.11 },  // T: Empty
+    { wch: 141.66 },  // U: Empty
+  ];
+
+  // === Format header row ===
+  formatHeaderRow(worksheet, headers.length);
+
+  // === Add formulas and number formatting ===
+  addFormulasAndFormatting(worksheet, worksheetData);
 
   return worksheet;
 }
 
 /**
- * Create the Detailed Wishlist sheet with all tender information
+ * Format the header row: Times New Roman 11pt, Bold, Centered, Wrapped
  */
-function createDetailSheet(reportData: WishlistReportData): XLSX.WorkSheet {
-  const { tenders } = reportData;
-
-  // Prepare headers
-  const headers = [
-    'S.No',
-    'Tender Title',
-    'Tender ID',
-    'Authority',
-    'Tender Value (INR)',
-    'EMD (INR)',
-    'Due Date',
-    'Category',
-    'Status',
-    'Analysis State',
-  ];
-
-  // Prepare data rows
-  const dataRows = tenders.map((tender, index) => [
-    index + 1,
-    tender.title,
-    tender.id,
-    tender.authority,
-    tender.value,
-    tender.emd,
-    tender.due_date,
-    tender.category,
-    tender.statusLabel,
-    tender.analysisStateLabel,
-  ]);
-
-  // Combine headers with data
-  const worksheetData = [headers, ...dataRows];
-
-  // Create worksheet
-  const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-
-  // Set column widths for better readability
-  worksheet['!cols'] = [
-    { wch: 6 },   // S.No
-    { wch: 35 },  // Tender Title
-    { wch: 12 },  // Tender ID
-    { wch: 25 },  // Authority
-    { wch: 18 },  // Tender Value
-    { wch: 15 },  // EMD
-    { wch: 14 },  // Due Date
-    { wch: 15 },  // Category
-    { wch: 12 },  // Status
-    { wch: 15 },  // Analysis State
-  ];
-
-  // Make header row bold
-  for (let c = 0; c < headers.length; c++) {
+function formatHeaderRow(worksheet: XLSX.WorkSheet, columnCount: number): void {
+  for (let c = 0; c < columnCount; c++) {
     const cellAddress = XLSX.utils.encode_cell({ r: 0, c });
     if (worksheet[cellAddress]) {
       worksheet[cellAddress].s = {
-        font: { bold: true, color: { rgb: 'FFFFFF' } },
-        fill: { fgColor: { rgb: '4472C4' } },
+        font: { name: 'Times New Roman', sz: 11, bold: true },
+        alignment: {
+          horizontal: 'center',
+          vertical: 'center',
+          wrapText: true,
+        },
       };
     }
   }
+}
 
-  // Format currency columns (columns D and E, indices 4 and 5)
+/**
+ * Add formulas and number formatting to data cells
+ */
+function addFormulasAndFormatting(worksheet: XLSX.WorkSheet, worksheetData: any[][]): void {
+  // Process each data row (skip header at index 0)
   for (let r = 1; r < worksheetData.length; r++) {
-    const tenderValueCell = XLSX.utils.encode_cell({ r, c: 4 });
-    const emdCell = XLSX.utils.encode_cell({ r, c: 5 });
+    const currentRow = r + 1; // XLSX uses 1-based indexing
 
-    if (worksheet[tenderValueCell]) {
-      worksheet[tenderValueCell].z = '#,##0.00';
+    // === Column A: S. No - Auto-increment formula ===
+    const cellA = XLSX.utils.encode_cell({ r, c: 0 });
+    if (r === 1) {
+      // First data row: set value to 1
+      worksheet[cellA] = { v: 1, t: 'n' };
+    } else {
+      // Subsequent rows: use formula =+A(previous)+1
+      const prevRow = currentRow - 1;
+      worksheet[cellA] = { f: `=+A${prevRow}+1`, t: 'n' };
     }
-    if (worksheet[emdCell]) {
-      worksheet[emdCell].z = '#,##0.00';
+
+    // === Column G: Estimated Project Cost - Currency format ===
+    const cellG = XLSX.utils.encode_cell({ r, c: 6 });
+    if (worksheet[cellG] && worksheet[cellG].v !== null && worksheet[cellG].v !== undefined) {
+      worksheet[cellG].z = '_ * #,##0.00_ ;_ * \\-#,##0.00_ ;_ * "-"??_ ;_ @_';
     }
+
+    // === Column K: BID Security - Keep as-is (mixed type) ===
+    // No special formatting needed, allow mixed types
+
+    // === Column L: Length - Currency format ===
+    const cellL = XLSX.utils.encode_cell({ r, c: 11 });
+    if (worksheet[cellL] && worksheet[cellL].v !== null && worksheet[cellL].v !== undefined) {
+      worksheet[cellL].z = '_ * #,##0.00_ ;_ * \\-#,##0.00_ ;_ * "-"??_ ;_ @_';
+    }
+
+    // === Column M: Per Km Cost - Formula =G/L ===
+    const cellM = XLSX.utils.encode_cell({ r, c: 12 });
+    const cellGValue = worksheetData[r][6]; // G column
+    const cellLValue = worksheetData[r][11]; // L column
+    if (cellGValue && cellLValue) {
+      worksheet[cellM] = { f: `=+G${currentRow}/L${currentRow}`, t: 'n' };
+      worksheet[cellM].z = '_(* #,##0.00_);_(* \\(#,##0.00\\);_(* "-"??_);_(@_)';
+    }
+
+    // === Column O: Amount of Road Work - Formula =G*49.63% ===
+    // const cellO = XLSX.utils.encode_cell({ r, c: 14 });
+    // if (cellGValue) {
+    //   worksheet[cellO] = { f: `=+G${currentRow}*49.63%`, t: 'n' };
+    // }
+
+    // === Column P: Amount of Structure Work - Formula =G*50.37% ===
+    // const cellP = XLSX.utils.encode_cell({ r, c: 15 });
+    // if (cellGValue) {
+    //   worksheet[cellP] = { f: `=+G${currentRow}*50.37%`, t: 'n' };
+    // }
   }
 
-  return worksheet;
+  // === Date/Time formatting for columns H, I, J ===
+  for (let r = 1; r < worksheetData.length; r++) {
+    // Column H: e-Published Date
+    const cellH = XLSX.utils.encode_cell({ r, c: 7 });
+    if (worksheet[cellH] && typeof worksheet[cellH].v === 'number') {
+      worksheet[cellH].z = 'm/d/yy h:mm';
+    }
+
+    // Column I: Tender Identification Date
+    const cellI = XLSX.utils.encode_cell({ r, c: 8 });
+    if (worksheet[cellI] && typeof worksheet[cellI].v === 'number') {
+      worksheet[cellI].z = 'm/d/yy h:mm';
+    }
+
+    // Column J: Last Date
+    const cellJ = XLSX.utils.encode_cell({ r, c: 9 });
+    if (worksheet[cellJ] && typeof worksheet[cellJ].v === 'number') {
+      worksheet[cellJ].z = 'm/d/yy h:mm';
+    }
+  }
 }

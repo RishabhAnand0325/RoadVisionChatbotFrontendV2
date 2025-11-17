@@ -204,6 +204,8 @@ export interface HistoryData {
   synopsis_state: boolean;
   evaluated_state: boolean;
   results: "won" | "rejected" | "incomplete" | "pending";
+  full_scraped_details?: ScrapedTender;
+  analysis_details?: TenderAnalysis;
 }
 
 export interface HistoryPageResponse {

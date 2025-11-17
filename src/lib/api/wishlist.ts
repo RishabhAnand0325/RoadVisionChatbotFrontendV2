@@ -37,6 +37,7 @@ export async function getHistoryWishlistData(): Promise<HistoryPageResponse> {
       throw new Error('Failed to fetch wishlisted tenders');
     }
     const data = await response.json() as HistoryPageResponse;
+    console.log(data)
     return data;
   } catch (error) {
     console.error(error)
