@@ -236,11 +236,7 @@ export default function LiveTendersUI({
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Publish Date</span>
                           <span className="font-medium">
-                            {new Date(tender.publish_date).toLocaleDateString('en-IN', { 
-                              day: 'numeric', 
-                              month: 'short', 
-                              year: 'numeric' 
-                            })}
+                            {tender.publish_date}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">

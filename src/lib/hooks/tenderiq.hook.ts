@@ -22,7 +22,7 @@ export const useReportStream = (run_id?: string) => {
       setReport((prevReport) => {
         if (!prevReport) return null
         const newQueries = prevReport.queries.map((query) => {
-          console.log(batch.query_id)
+          console.log(batch)
           if (query.id != batch.query_id) {
             console.log(query.id, batch.query_id)
             return query
