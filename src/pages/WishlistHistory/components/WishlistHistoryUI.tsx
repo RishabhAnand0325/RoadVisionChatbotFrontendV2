@@ -2,8 +2,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { HistoryData, HistoryPageResponse, MetadataCardProps, WishlistHistoryUIProps } from "@/lib/types/wishlist";
 import { getCurrencyTextFromNumber } from "@/lib/utils/conversions";
-import { ArrowLeft, Check, Circle, Download, Eye, Filter, Heart, IndianRupee, SquareCheck, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Circle, Download, Eye, Filter, Heart, IndianRupee, SquareCheck, Trash2, TrendingUp, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
+import WishlistReportPreview from "./WishlistReportPreview";
+import { useWishlistReportData } from "../hooks/useWishlistReportData";
 
 export function MetadataCard({ title, value, LucideIcon, description }: MetadataCardProps) {
   return (
@@ -91,6 +93,11 @@ export default function WishlistHistoryUI({ navigate, data, handleViewTender, ha
   const [metadata, setMetadata] = useState<MetadataCardProps[]>([])
   const [filteredTenders, setFilteredTenders] = useState<HistoryData[]>(data.tenders);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isReportPreviewOpen, setIsReportPreviewOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Process data for report
+  const reportData = useWishlistReportData(data);
 
   useEffect(() => {
     const filtered = data.tenders.filter((tender) => tender.title.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -114,51 +121,81 @@ export default function WishlistHistoryUI({ navigate, data, handleViewTender, ha
     const tendersWonMetadata: MetadataCardProps = {
       title: 'Tenders Won',
       value: data.tenders.filter(tender => tender.results === 'won').length.toString(),
-      LucideIcon: SquareCheck,
-      description: 'AI-powered insights',
+      LucideIcon: TrendingUp,
+      description: 'Successful bids',
     }
     const tendersWonValueMetadata: MetadataCardProps = {
       title: 'Tenders Won Value',
       value: "Rs." + data.tenders.filter(tender => tender.results === 'won').reduce((total, tender) => total + tender.value, 0).toLocaleString('en-IN') + "Cr",
       LucideIcon: IndianRupee,
-      description: 'AI-powered insights',
+      description: 'Total value won',
     }
     const pendingTendersMetadata: MetadataCardProps = {
       title: 'Pending Tenders',
       value: data.tenders.filter(tender => tender.results === 'pending').length.toString(),
-      LucideIcon: SquareCheck,
-      description: 'AI-powered insights',
+      LucideIcon: Clock,
+      description: 'Awaiting results',
     }
 
     setMetadata([totalSavedMetadata, tendersAnalyzedMetadata, tendersWonMetadata, tendersWonValueMetadata, pendingTendersMetadata])
   }, [])
 
+  const handleOpenReportPreview = () => {
+    setIsReportPreviewOpen(true);
+  };
+
+  const handleCloseReportPreview = () => {
+    setIsReportPreviewOpen(false);
+  };
+
+  const handleExportReport = () => {
+    setIsExporting(true);
+    // Simulate export delay
+    setTimeout(() => {
+      setIsExporting(false);
+    }, 1000);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/tenderiq')}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
-        <div className="flex flex-row justify-between items-center w-full">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/tenderiq')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
               <Heart className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Wishlist / Tender History</h1>
-              <p className="text-sm text-muted-foreground">
+              <h1 className="text-3xl font-bold leading-tight">Wishlist</h1>
+              <p className="text-xs text-muted-foreground">
                 Manage your saved tenders
               </p>
             </div>
           </div>
-          <Button variant="default" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Download Comprehensive Report
-          </Button>
         </div>
+        <Button
+          variant="default"
+          size="sm"
+          onClick={handleOpenReportPreview}
+          disabled={data.tenders.length === 0}
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Generate Report
+        </Button>
       </div>
+
+      {/* Report Preview Modal */}
+      <WishlistReportPreview
+        isOpen={isReportPreviewOpen}
+        onClose={handleCloseReportPreview}
+        reportData={reportData}
+        onExportToPDF={handleExportReport}
+        isExporting={isExporting}
+      />
 
       {/* Metadata area */}
       <div className="grid grid-cols-5 gap-4">

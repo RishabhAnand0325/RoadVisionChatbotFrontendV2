@@ -1,6 +1,6 @@
 import { API_BASE_URL } from "../config/api";
 import { mockHistoryPageResponse } from "../mock/wishlist";
-import { HistoryPageResponse } from "../types/wishlist";
+import { HistoryPageResponse, WishlistReportData } from "../types/wishlist";
 
 {/*
 Endpoint: {api_root}/tenderiq/history-wishlist
@@ -43,3 +43,16 @@ export async function getHistoryWishlistData(): Promise<HistoryPageResponse> {
     return mockHistoryPageResponse;
   }
 }
+
+/**
+ * Placeholder function for server-side PDF export
+ * Currently not used - client-side PDF generation via react-to-print is preferred
+ * Future enhancement: Implement if server-side PDF generation is required
+ */
+export const exportWishlistReportToPDF = async (
+  reportData: WishlistReportData
+): Promise<void> => {
+  // TODO: Implement PDF export functionality (server-side)
+  console.log('Exporting wishlist report to PDF:', reportData);
+  throw new Error('PDF export not yet implemented');
+};

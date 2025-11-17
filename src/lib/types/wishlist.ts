@@ -55,3 +55,39 @@ export interface MetadataCardProps {
   LucideIcon: React.ForwardRefExoticComponent<Omit<LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>>;
   description: string;
 }
+
+// Report-related types
+export interface ReportMetrics {
+  totalSaved: number;
+  totalAnalyzed: number;
+  totalWon: number;
+  totalRejected: number;
+  totalIncomplete: number;
+  totalPending: number;
+  totalTenderValue: number;
+  averageTenderValue: number;
+  totalEMD: number;
+  averageEMD: number;
+}
+
+export interface WishlistReportTableRow extends HistoryData {
+  formattedValue: string;
+  formattedEMD: string;
+  statusLabel: string;
+  analysisStateLabel: string;
+}
+
+export interface WishlistReportData {
+  metrics: ReportMetrics;
+  tenders: WishlistReportTableRow[];
+  generatedAt: string;
+  totalCount: number;
+}
+
+export interface WishlistReportPreviewProps {
+  isOpen: boolean;
+  onClose: () => void;
+  reportData: WishlistReportData;
+  onExportToPDF: () => void;
+  isExporting?: boolean;
+}
