@@ -10,9 +10,9 @@ interface RFPSectionsProps {
 export default function RFPSections({ rfpSections }: RFPSectionsProps) {
   if (!rfpSections) {
     return (
-      <Card className="p-8 text-center">
-        <p className="text-muted-foreground">No RFP sections data available for this analysis.</p>
-      </Card>
+      <div className="flex items-center justify-center p-12">
+        <p className="text-muted-foreground">RFP sections data is not available yet.</p>
+      </div>
     );
   }
 

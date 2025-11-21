@@ -5,6 +5,7 @@ import { getTenderById } from '@/data/sampleTenders';
 import { fetchBidSynopsis, saveBidSynopsis, loadBidSynopsis } from '@/lib/api/bidsynopsis.api';
 import { SynopsisContent } from '@/lib/types/bidsynopsis.types';
 import BidSynopsisUI from './components/BidSynopsisUI';
+import { Button } from '@/components/ui/button';
 
 export default function BidSynopsis() {
   const { id } = useParams();
@@ -129,12 +130,25 @@ export default function BidSynopsis() {
     }
   };
 
-  if (isLoading || !synopsisContent) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Loading bid synopsis...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!synopsisContent) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">Failed to load bid synopsis data</p>
+          <Button className="mt-4" onClick={() => navigate(-1)}>
+            Go Back
+          </Button>
         </div>
       </div>
     );
