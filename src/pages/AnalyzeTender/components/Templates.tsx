@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 
 interface TemplatesProps {
-  templates: TemplatesData;
+  templates: TemplatesData | null;
 }
 
 interface TemplateSection {
@@ -19,6 +19,15 @@ interface TemplateSection {
 export default function Templates({ templates }: TemplatesProps) {
   const { toast } = useToast();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  // Handle null or empty templates
+  if (!templates) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <p className="text-muted-foreground">Templates data is not available yet.</p>
+      </div>
+    );
+  }
 
   const templateSections: TemplateSection[] = [
     {

@@ -1,4 +1,4 @@
-import { ArrowLeft, AlertTriangle, Loader2, Download, FileDown, ChevronDown } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Loader2, Download, FileDown, ChevronDown, FileText, PlayCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -24,6 +24,10 @@ interface AnalyzeTenderUIProps {
   onTabChange: (tab: string) => void;
   onBack: () => void;
   onDownloadReport: (format: 'excel' | 'word') => void;
+  onNavigateToBidSynopsis: () => void;
+  onTriggerAnalysis: () => void;
+  isTriggering: boolean;
+  tenderId?: string;
 }
 
 export default function AnalyzeTenderUI({
@@ -35,6 +39,10 @@ export default function AnalyzeTenderUI({
   onTabChange,
   onBack,
   onDownloadReport,
+  onNavigateToBidSynopsis,
+  onTriggerAnalysis,
+  isTriggering,
+  tenderId,
 }: AnalyzeTenderUIProps) {
   return (
     <div className="min-h-screen bg-background">
@@ -57,41 +65,102 @@ export default function AnalyzeTenderUI({
               </p>
             </div>
           </div>
-          {analysis && (
-            <div className="flex gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline">
-                    <FileDown className="h-4 w-4 mr-2" />
-                    Download Report
-                    <ChevronDown className="h-4 w-4 ml-2" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {/* <DropdownMenuItem onClick={() => onDownloadReport('pdf')}>
-                    <span className="mr-2">📄</span>
-                    Download as PDF
-                  </DropdownMenuItem> */}
-                  <DropdownMenuItem onClick={() => onDownloadReport('excel')}>
-                    <span className="mr-2">📊</span>
-                    Download as Excel
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onDownloadReport('word')}>
-                    <span className="mr-2">📝</span>
-                    Download as Word
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          )}
+          <div className="flex gap-2">
+            {/* Trigger Analysis Button - Show when no analysis, failed, or status is not completed */}
+            {(!analysis || isError || (analysis && analysis.status !== 'completed')) && tenderId && (
+              <Button 
+                variant="default"
+                onClick={onTriggerAnalysis}
+                disabled={isTriggering}
+              >
+                {isTriggering ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Starting Analysis...
+                  </>
+                ) : (
+                  <>
+                    <PlayCircle className="h-4 w-4 mr-2" />
+                    Analyze Tender Now
+                  </>
+                )}
+              </Button>
+            )}
+            
+            {analysis && analysis.status === 'completed' && (
+              <>
+                <Button 
+                  variant="outline"
+                  onClick={onNavigateToBidSynopsis}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Draft Bid Synopsis
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                      <FileDown className="h-4 w-4 mr-2" />
+                      Download Report
+                      <ChevronDown className="h-4 w-4 ml-2" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {/* <DropdownMenuItem onClick={() => onDownloadReport('pdf')}>
+                      <span className="mr-2">📄</span>
+                      Download as PDF
+                    </DropdownMenuItem> */}
+                    <DropdownMenuItem onClick={() => onDownloadReport('excel')}>
+                      <span className="mr-2">📊</span>
+                      Download as Excel
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onDownloadReport('word')}>
+                      <span className="mr-2">📝</span>
+                      Download as Word
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Error State */}
-        {isError && error && (
-          <Card className="p-6 border-red-200 bg-red-50">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-              <p className="text-red-800">{error}</p>
+        {/* Error State with Trigger Button - Show friendly message for 404 */}
+        {isError && (
+          <Card className="p-8 border-blue-200 bg-blue-50">
+            <div className="flex flex-col items-center justify-center space-y-4 text-center">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="h-8 w-8 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-blue-900 mb-2">
+                  Analysis Not Available
+                </h3>
+                <p className="text-blue-700 mb-4">
+                  This tender hasn't been analyzed yet. Click the button below to start the analysis.
+                </p>
+              </div>
+              {tenderId && (
+                <Button 
+                  size="lg"
+                  onClick={onTriggerAnalysis}
+                  disabled={isTriggering}
+                >
+                  {isTriggering ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Starting Analysis...
+                    </>
+                  ) : (
+                    <>
+                      <PlayCircle className="h-5 w-5 mr-2" />
+                      Analyze Tender Now
+                    </>
+                  )}
+                </Button>
+              )}
+              <p className="text-sm text-blue-600 mt-2">
+                Analysis typically takes 3-5 minutes to complete
+              </p>
             </div>
           </Card>
         )}

@@ -7,6 +7,8 @@ import { useEffect, useState } from "react";
 import WishlistReportPreview from "./WishlistReportPreview";
 import { useWishlistReportData } from "../hooks/useWishlistReportData";
 import { useWishlistReportExcel } from "../hooks/useWishlistReportExcel";
+import { useQuery } from "@tanstack/react-query";
+import { getHistoryWishlistData } from "@/lib/api/wishlist";
 
 export function MetadataCard({ title, value, LucideIcon, description }: MetadataCardProps) {
   return (
@@ -91,56 +93,82 @@ export function TenderCard({ data, handleViewTender, handleRemoveFromWishlist }:
 }
 
 export default function WishlistHistoryUI({ navigate, data, handleViewTender, handleRemoveFromWishlist }: WishlistHistoryUIProps) {
-  const [metadata, setMetadata] = useState<MetadataCardProps[]>([])
   const [filteredTenders, setFilteredTenders] = useState<HistoryData[]>(data.tenders);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isReportPreviewOpen, setIsReportPreviewOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  // Process data for report
+  // Only refetch wishlist when there are tenders in pending/analyzing state
+  const hasActiveAnalysis = data.tenders.some(t => 
+    t.analysis_state === 'pending' || 
+    t.analysis_state === 'parsing' || 
+    t.analysis_state === 'analyzing'
+  );
+
+  const { data: liveWishlist } = useQuery({
+    queryKey: ['wishlist'],
+    queryFn: getHistoryWishlistData,
+    // Only poll if there's active analysis, otherwise disable
+    refetchInterval: hasActiveAnalysis ? 10000 : false, // Poll every 10 seconds only when needed
+    enabled: true,
+  });
+
+  // Use live data when available, fallback to initial data
+  const displayData = liveWishlist || data;
   const reportData = useWishlistReportData(data);
   const { handleExportToExcel } = useWishlistReportExcel();
 
-  useEffect(() => {
-    const filtered = data.tenders.filter((tender) => tender.title.toLowerCase().includes(searchQuery.toLowerCase()));
-    setFilteredTenders(filtered);
-    console.log(filtered)
-  }, [searchQuery, data.tenders]);
+  // Calculate metadata from display data
+  const tenders = displayData?.tenders || [];
+  
+  const totalSavedMetadata: MetadataCardProps = {
+    title: 'Total Saved',
+    value: tenders.length.toString(),
+    LucideIcon: Heart,
+    description: 'Active Opportunities',
+  }
+  const tendersAnalyzedMetadata: MetadataCardProps = {
+    title: 'Tenders Analyzed',
+    value: tenders.filter(tender => tender.analysis_state === 'completed').length.toString(),
+    LucideIcon: SquareCheck,
+    description: 'AI-powered insights',
+  }
+  const tendersWonMetadata: MetadataCardProps = {
+    title: 'Tenders Won',
+    value: tenders.filter(tender => tender.results === 'won').length.toString(),
+    LucideIcon: TrendingUp,
+    description: 'Successful bids',
+  }
+  
+  // Calculate total won value - convert from rupees to crores
+  const totalWonValue = tenders
+    .filter(tender => tender.results === 'won')
+    .reduce((total, tender) => total + (tender.value || 0), 0) / 10000000;
+  
+  const tendersWonValueMetadata: MetadataCardProps = {
+    title: 'Tenders Won Value',
+    value: `₹${totalWonValue.toFixed(2)} Cr`,
+    LucideIcon: IndianRupee,
+    description: 'Total value won',
+  }
+  const pendingTendersMetadata: MetadataCardProps = {
+    title: 'Pending Tenders',
+    value: tenders.filter(tender => tender.results === 'pending').length.toString(),
+    LucideIcon: Clock,
+    description: 'Awaiting results',
+  }
 
-  useEffect(() => {
-    const totalSavedMetadata: MetadataCardProps = {
-      title: 'Total Saved',
-      value: data.tenders.length.toString(),
-      LucideIcon: Heart,
-      description: 'Active Opportunities',
-    }
-    const tendersAnalyzedMetadata: MetadataCardProps = {
-      title: 'Tenders Analyzed',
-      value: data.tenders.filter(tender => tender.analysis_state).length.toString(),
-      LucideIcon: SquareCheck,
-      description: 'AI-powered insights',
-    }
-    const tendersWonMetadata: MetadataCardProps = {
-      title: 'Tenders Won',
-      value: data.tenders.filter(tender => tender.results === 'won').length.toString(),
-      LucideIcon: TrendingUp,
-      description: 'Successful bids',
-    }
-    const tendersWonValueMetadata: MetadataCardProps = {
-      title: 'Tenders Won Value',
-      value: "Rs." + data.tenders.filter(tender => tender.results === 'won').reduce((total, tender) => total + tender.value, 0).toLocaleString('en-IN') + "Cr",
-      LucideIcon: IndianRupee,
-      description: 'Total value won',
-    }
-    const pendingTendersMetadata: MetadataCardProps = {
-      title: 'Pending Tenders',
-      value: data.tenders.filter(tender => tender.results === 'pending').length.toString(),
-      LucideIcon: Clock,
-      description: 'Awaiting results',
-    }
+  const metadata = [totalSavedMetadata, tendersAnalyzedMetadata, tendersWonMetadata, tendersWonValueMetadata, pendingTendersMetadata];
 
-    setMetadata([totalSavedMetadata, tendersAnalyzedMetadata, tendersWonMetadata, tendersWonValueMetadata, pendingTendersMetadata])
-  }, [])
+  // Update filtered tenders when display data changes
+  useEffect(() => {
+    if (displayData?.tenders) {
+      const filtered = displayData.tenders.filter((tender) => 
+        tender.title.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredTenders(filtered);
+    }
+  }, [searchQuery, displayData]);
 
   const handleOpenReportPreview = () => {
     setIsReportPreviewOpen(true);

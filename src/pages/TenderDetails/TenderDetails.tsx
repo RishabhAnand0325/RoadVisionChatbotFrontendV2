@@ -48,12 +48,44 @@ export default function TenderDetails() {
   const handleAddToWishlist = async () => {
     if (!tender) return;
     try {
-      await performTenderAction(tender.id, { action: 'toggle_wishlist' });
-      toast({
-        title: isWishlisted ? 'Removed from wishlist' : 'Added to wishlist',
-        description: 'Tender wishlist updated successfully',
-      });
-      queryClient.invalidateQueries({ queryKey: ['wishlist'] });
+      const wasWishlisted = isWishlisted;
+      const response = await performTenderAction(tender.id, { action: 'toggle_wishlist' });
+      
+      // Refetch queries to ensure UI shows updated wishlist & analysis status
+      // Use refetchQueries so we wait for the updated data to be available
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ['wishlist'], exact: false }),
+        queryClient.refetchQueries({ queryKey: ['analysisQueue'], exact: false }),
+        queryClient.refetchQueries({ queryKey: ['tenders'], exact: false }),
+        queryClient.refetchQueries({ queryKey: ['tenderDetails', id], exact: false }),
+      ]);
+      
+      // Show enhanced toast based on queue status
+      if (!wasWishlisted) {
+        let description = 'Tender added to wishlist.';
+        
+        // Check if analysis already completed
+        if (response.analysis_completed) {
+          description += ' Analysis already completed.';
+        } else if (response.has_active_analysis && response.queue_position && response.queue_position > 0) {
+          // Queued behind another analysis
+          description += ` You're #${response.queue_position} in the analysis queue.`;
+        } else if (!response.analysis_completed) {
+          // Starting immediately (no queue position means it's starting now)
+          description += ' Analysis is starting now (est. 3-5 min)';
+        }
+        
+        toast({
+          title: '✓ Added to Wishlist',
+          description,
+          duration: 6000,
+        });
+      } else {
+        toast({
+          title: 'Removed from wishlist',
+          description: 'Tender removed successfully',
+        });
+      }
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to update wishlist', variant: 'destructive' });
     }

@@ -20,7 +20,10 @@ const WishlistHistory = () => {
   //   queryFn: getHistoryWishlistData,
   // });
 
-  const [wishlistItems, setWishlistItems] = useState<HistoryPageResponse>()
+  const [wishlistItems, setWishlistItems] = useState<HistoryPageResponse>({
+    report_file_url: '',
+    tenders: []
+  })
   const [isLoading, setIsLoading] = useState(true)
 
   const fetchWishlist = async () => {
@@ -36,13 +39,20 @@ const WishlistHistory = () => {
 
   const handleRemoveFromWishlist = async (id: string) => {
     try {
+      // Optimistically update UI immediately
+      setWishlistItems(prev => ({
+        ...prev,
+        tenders: prev?.tenders?.filter(tender => tender.id !== id) || []
+      }));
+
       await performTenderAction(id, { action: 'toggle_wishlist' });
       toast({
         title: 'Removed from wishlist',
         description: 'Tender removed successfully.',
       });
       await queryClient.invalidateQueries({ queryKey: ['wishlist'] });
-      fetchWishlist()
+      // Fetch fresh data to ensure consistency
+      fetchWishlist();
     } catch (error) {
       toast({
         title: 'Error',
@@ -50,6 +60,8 @@ const WishlistHistory = () => {
         variant: 'destructive',
       });
       console.error(`Failed to remove ${id} from wishlist:`, error);
+      // Revert optimistic update on error
+      fetchWishlist();
     }
   };
 

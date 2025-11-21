@@ -8,9 +8,22 @@ interface AuthState {
   error: string | null;
 }
 
+// Load token from localStorage if available
+const loadTokenFromStorage = (): string | null => {
+  try {
+    const token = localStorage.getItem('ceigall-auth-token');
+    return token;
+  } catch (error) {
+    console.error('Failed to load token from localStorage:', error);
+    return null;
+  }
+};
+
+const savedToken = loadTokenFromStorage();
+
 const initialState: AuthState = {
-  token: null,
-  isAuthenticated: false,
+  token: savedToken,
+  isAuthenticated: !!savedToken,
   isLoading: false,
   error: null,
 };
@@ -29,6 +42,12 @@ export const authSlice = createSlice({
       state.isAuthenticated = true;
       state.isLoading = false;
       state.error = null;
+      // Save token to localStorage for persistence
+      try {
+        localStorage.setItem('ceigall-auth-token', action.payload.access_token);
+      } catch (error) {
+        console.error('Failed to save token to localStorage:', error);
+      }
     },
     loginFailure: (state, action: PayloadAction<string>) => {
       state.isLoading = false;
@@ -41,6 +60,12 @@ export const authSlice = createSlice({
       state.token = null;
       state.isAuthenticated = false;
       state.error = null;
+      // Clear token from localStorage
+      try {
+        localStorage.removeItem('ceigall-auth-token');
+      } catch (error) {
+        console.error('Failed to remove token from localStorage:', error);
+      }
     },
 
     // Set token (for persistent state)
@@ -48,9 +73,21 @@ export const authSlice = createSlice({
       if (action.payload) {
         state.token = action.payload;
         state.isAuthenticated = true;
+        // Save to localStorage
+        try {
+          localStorage.setItem('ceigall-auth-token', action.payload);
+        } catch (error) {
+          console.error('Failed to save token to localStorage:', error);
+        }
       } else {
         state.token = null;
         state.isAuthenticated = false;
+        // Clear from localStorage
+        try {
+          localStorage.removeItem('ceigall-auth-token');
+        } catch (error) {
+          console.error('Failed to remove token from localStorage:', error);
+        }
       }
     },
 
