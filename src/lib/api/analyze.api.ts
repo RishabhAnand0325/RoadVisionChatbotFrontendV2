@@ -32,7 +32,6 @@ const handleResponse = async (response: Response) => {
  */
 export const fetchTenderAnalysis = async (tenderId: string): Promise<TenderAnalysisResponse> => {
   console.log(`Fetching tender analysis for: ${tenderId}`);
-  // return mockTenderAnalysis
 
   const url = `${API_BASE_URL}/analyze/${tenderId}`;
 
@@ -48,9 +47,7 @@ export const fetchTenderAnalysis = async (tenderId: string): Promise<TenderAnaly
     }
 
     const data = await response.json() as TenderAnalysisResponse;
-    data.rfp_sections = data.rfp_sections || mockTenderAnalysis.rfp_sections
-    data.data_sheet = data.data_sheet || mockTenderAnalysis.data_sheet
-    return data
+    return data;
 
   } catch (error) {
     console.error(`Error in fetchTenderAnalysis for tender ${tenderId}:`, error);
@@ -155,3 +152,56 @@ export const downloadTemplate = async (templateId: string, templateName: string)
     throw error;
   }
 };
+
+/**
+ * Fetch analysis queue status
+ * GET /api/v1/analyze/queue/status
+ */
+export async function fetchAnalysisQueueStatus() {
+  const response = await fetch(`${API_BASE_URL}/analyze/queue/status`, {
+    headers: getAuthHeaders(),
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch queue status');
+  }
+  
+  return response.json();
+}
+
+/**
+ * Get queue position for a specific tender
+ * GET /api/v1/analyze/queue/position/{tenderId}
+ */
+export async function fetchTenderQueuePosition(tenderId: string) {
+  const response = await fetch(`${API_BASE_URL}/analyze/queue/position/${tenderId}`, {
+    headers: getAuthHeaders(),
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch tender queue position');
+  }
+  
+  return response.json();
+}
+
+/**
+ * Trigger analysis for a tender
+ * POST /api/v1/analyze/trigger/{tenderId}
+ * 
+ * @param tenderId - Tender reference number (TDR)
+ * @returns Analysis trigger response with status and queue info
+ */
+export async function triggerTenderAnalysis(tenderId: string) {
+  const response = await fetch(`${API_BASE_URL}/analyze/trigger/${tenderId}`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to trigger analysis: ${errorText}`);
+  }
+  
+  return response.json();
+}

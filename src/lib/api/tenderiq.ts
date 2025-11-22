@@ -347,11 +347,12 @@ export const fetchFavoriteTenders = async (): Promise<Tender[]> => {
  * Perform an action on a tender (e.g., wishlist, archive).
  * @param tenderId The ID of the tender.
  * @param action The action to perform.
+ * @returns Action response with analysis info if triggered.
  */
 export const performTenderAction = async (
   tenderId: string,
   action: TenderActionRequest
-): Promise<void> => {
+): Promise<any> => {
   const url = `${API_BASE_URL}/tenderiq/tenders/${tenderId}/actions`;
   console.log(`Performing action on tender ${tenderId}:`, action);
 
@@ -370,7 +371,9 @@ export const performTenderAction = async (
       throw new Error(`Failed to perform action on tender: ${response.status} ${errorText}`);
     }
     
-    console.log(`Action ${action.action} on tender ${tenderId} successful.`);
+    const data = await response.json();
+    console.log(`Action ${action.action} on tender ${tenderId} successful.`, data);
+    return data;
   } catch (error) {
     console.error(`Error in performTenderAction for tender ${tenderId}:`, error);
     throw error;

@@ -1,5 +1,6 @@
 import { Search, Bell, User, Menu } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -12,20 +13,26 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { removeToken } from "@/lib/api/auth";
+import { logoutSuccess } from "@/lib/redux/authSlice";
 import { useToast } from "@/hooks/use-toast";
 
 export function TopNav() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { toast } = useToast();
 
   const handleLogout = () => {
-    removeToken();
+    // Dispatch Redux logout action (this clears both Redux state and localStorage)
+    dispatch(logoutSuccess());
+    
     toast({
       title: "Logged out",
       description: "You have been successfully logged out",
     });
+    
+    // Force navigation and page reload to ensure clean state
     navigate("/auth");
+    window.location.reload();
   };
 
   return (

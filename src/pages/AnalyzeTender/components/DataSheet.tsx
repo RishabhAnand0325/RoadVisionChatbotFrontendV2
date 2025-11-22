@@ -3,10 +3,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { DataSheetData } from '@/lib/types/analyze.type';
 
 interface DataSheetProps {
-  dataSheet: DataSheetData;
+  dataSheet: DataSheetData | null;
 }
 
 export default function DataSheet({ dataSheet }: DataSheetProps) {
+  // Handle null or empty data sheet
+  if (!dataSheet) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <p className="text-muted-foreground">Data sheet is not available yet.</p>
+      </div>
+    );
+  }
   const renderTable = (title: string, data: any[]) => {
     if (!data || data.length === 0) return null;
 
