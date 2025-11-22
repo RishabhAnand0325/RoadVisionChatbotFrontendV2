@@ -1,7 +1,11 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { fetchTenderAnalysis, downloadAnalysisReport, triggerTenderAnalysis } from '@/lib/api/analyze.api';
+import {
+  fetchTenderAnalysis,
+  downloadAnalysisReport,
+  triggerTenderAnalysis,
+} from '@/lib/api/analyze.api';
 import { fetchTenderById } from '@/lib/api/tenderiq';
 import { TenderAnalysisResponse } from '@/lib/types/analyze.type';
 import { useToast } from '@/hooks/use-toast';
@@ -22,10 +26,9 @@ export default function AnalyzeTender() {
     enabled: !!id,
   });
 
-  // Get tender reference (TDR) from tender details
   const tenderRef = tenderDetails?.tenderNo;
 
-  // Fetch complete analysis in one query
+  // Fetch tender analysis with live polling support
   const {
     data: analysis,
     isLoading,
@@ -35,17 +38,23 @@ export default function AnalyzeTender() {
     queryKey: ['tenderAnalysis', id],
     queryFn: () => fetchTenderAnalysis(id!),
     enabled: !!id,
-    retry: false, // Don't retry on 404
-    refetchOnWindowFocus: false, // Don't refetch when window regains focus
+
+    // 🟢 Keep your live polling logic (fix/scraper-run)
+    refetchInterval: (data) => {
+      if (!data) return false;
+      const inProgress = data.status !== 'completed' && data.status !== 'failed';
+      return inProgress ? 2000 : false; // Poll every 2 sec
+    },
+    refetchIntervalInBackground: true,
+
+    // 🟢 Keep these from main to avoid unnecessary retries & focus refetch
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 
-  const handleBack = () => {
-    navigate('/tenderiq');
-  };
+  const handleBack = () => navigate('/tenderiq');
 
-  const handleNavigateToBidSynopsis = () => {
-    navigate(`/synopsis/${id}`);
-  };
+  const handleNavigateToBidSynopsis = () => navigate(`/synopsis/${id}`);
 
   const handleDownloadReport = async (format: 'pdf' | 'excel' | 'word') => {
     if (!id) {
@@ -59,12 +68,11 @@ export default function AnalyzeTender() {
 
     try {
       await downloadAnalysisReport(id, format);
-      const formatNames = { pdf: 'PDF', excel: 'Excel', word: 'Word' };
       toast({
         title: 'Success',
-        description: `Analysis report downloaded as ${formatNames[format]}`,
+        description: `Analysis report downloaded as ${format.toUpperCase()}`,
       });
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'Failed to download analysis report',
@@ -84,27 +92,25 @@ export default function AnalyzeTender() {
     }
 
     setIsTriggering(true);
+
     try {
       const response = await triggerTenderAnalysis(tenderRef);
-      
+
       if (response.analysis_exists) {
-        // Analysis already exists
         toast({
           title: 'Analysis Already Exists',
           description: `This tender has already been analyzed. Status: ${response.status}`,
         });
       } else {
-        // New analysis started
         const queueMessage = response.has_active_analysis
           ? `Analysis queued at position ${response.queue_position}`
           : 'Analysis started successfully';
-        
+
         toast({
           title: 'Analysis Started',
           description: queueMessage,
         });
 
-        // Refetch analysis data to show progress
         setTimeout(() => {
           queryClient.invalidateQueries({ queryKey: ['tenderAnalysis', id] });
         }, 2000);
@@ -112,7 +118,8 @@ export default function AnalyzeTender() {
     } catch (error) {
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to trigger analysis',
+        description:
+          error instanceof Error ? error.message : 'Failed to trigger analysis',
         variant: 'destructive',
       });
     } finally {

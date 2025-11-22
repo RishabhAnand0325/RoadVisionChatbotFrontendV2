@@ -1,4 +1,13 @@
-import { ArrowLeft, AlertTriangle, Loader2, Download, FileDown, ChevronDown, FileText, PlayCircle } from 'lucide-react';
+import {
+  ArrowLeft,
+  AlertTriangle,
+  Loader2,
+  Download,
+  FileDown,
+  ChevronDown,
+  FileText,
+  PlayCircle,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -60,42 +69,44 @@ export default function AnalyzeTenderUI({
                 {isLoading
                   ? 'Loading analysis...'
                   : analysis
-                    ? `Status: ${analysis.status}`
-                    : 'Analysis Results'}
+                  ? `Status: ${analysis.status || 'Processing'}`
+                  : 'Analysis Results'}
               </p>
             </div>
           </div>
+
+          {/* HEADER BUTTONS */}
           <div className="flex gap-2">
-            {/* Trigger Analysis Button - Show when no analysis, failed, or status is not completed */}
-            {(!analysis || isError || (analysis && analysis.status !== 'completed')) && tenderId && (
-              <Button 
-                variant="default"
-                onClick={onTriggerAnalysis}
-                disabled={isTriggering}
-              >
-                {isTriggering ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Starting Analysis...
-                  </>
-                ) : (
-                  <>
-                    <PlayCircle className="h-4 w-4 mr-2" />
-                    Analyze Tender Now
-                  </>
-                )}
-              </Button>
-            )}
-            
+            {/* Show trigger button when no analysis OR failed OR not completed */}
+            {(!analysis || isError || (analysis && analysis.status !== 'completed')) &&
+              tenderId && (
+                <Button
+                  variant="default"
+                  onClick={onTriggerAnalysis}
+                  disabled={isTriggering}
+                >
+                  {isTriggering ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Starting Analysis...
+                    </>
+                  ) : (
+                    <>
+                      <PlayCircle className="h-4 w-4 mr-2" />
+                      Analyze Tender Now
+                    </>
+                  )}
+                </Button>
+              )}
+
+            {/* When Completed: Show Synopsis + Download */}
             {analysis && analysis.status === 'completed' && (
               <>
-                <Button 
-                  variant="outline"
-                  onClick={onNavigateToBidSynopsis}
-                >
+                <Button variant="outline" onClick={onNavigateToBidSynopsis}>
                   <FileText className="h-4 w-4 mr-2" />
                   Draft Bid Synopsis
                 </Button>
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline">
@@ -105,14 +116,11 @@ export default function AnalyzeTenderUI({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    {/* <DropdownMenuItem onClick={() => onDownloadReport('pdf')}>
-                      <span className="mr-2">📄</span>
-                      Download as PDF
-                    </DropdownMenuItem> */}
                     <DropdownMenuItem onClick={() => onDownloadReport('excel')}>
                       <span className="mr-2">📊</span>
                       Download as Excel
                     </DropdownMenuItem>
+
                     <DropdownMenuItem onClick={() => onDownloadReport('word')}>
                       <span className="mr-2">📝</span>
                       Download as Word
@@ -124,7 +132,7 @@ export default function AnalyzeTenderUI({
           </div>
         </div>
 
-        {/* Error State with Trigger Button - Show friendly message for 404 */}
+        {/* Error State */}
         {isError && (
           <Card className="p-8 border-blue-200 bg-blue-50">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
@@ -136,15 +144,13 @@ export default function AnalyzeTenderUI({
                   Analysis Not Available
                 </h3>
                 <p className="text-blue-700 mb-4">
-                  This tender hasn't been analyzed yet. Click the button below to start the analysis.
+                  This tender hasn't been analyzed yet. Click the button below to
+                  start the analysis.
                 </p>
               </div>
+
               {tenderId && (
-                <Button 
-                  size="lg"
-                  onClick={onTriggerAnalysis}
-                  disabled={isTriggering}
-                >
+                <Button size="lg" onClick={onTriggerAnalysis} disabled={isTriggering}>
                   {isTriggering ? (
                     <>
                       <Loader2 className="h-5 w-5 mr-2 animate-spin" />
@@ -158,14 +164,15 @@ export default function AnalyzeTenderUI({
                   )}
                 </Button>
               )}
+
               <p className="text-sm text-blue-600 mt-2">
-                Analysis typically takes 3-5 minutes to complete
+                Analysis typically takes 3–5 minutes to complete.
               </p>
             </div>
           </Card>
         )}
 
-        {/* Loading State */}
+        {/* Loading */}
         {isLoading && (
           <Card className="p-8">
             <div className="flex flex-col items-center space-y-4">
@@ -175,38 +182,89 @@ export default function AnalyzeTenderUI({
           </Card>
         )}
 
-        {/* Analysis Results */}
-        {analysis && (
-          <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="one-pager">One Pager</TabsTrigger>
-              <TabsTrigger value="scope" disabled={analysis.scope_of_work === null}>Scope of Work</TabsTrigger>
-              <TabsTrigger value="sections" disabled={analysis.rfp_sections === null}>RFP Sections</TabsTrigger>
-              <TabsTrigger value="datasheet" disabled={analysis.data_sheet === null}>Data Sheet</TabsTrigger>
-              <TabsTrigger value="templates" disabled={analysis.templates === null}>Templates</TabsTrigger>
-            </TabsList>
+        {/* In Progress */}
+        {!isLoading &&
+          analysis &&
+          analysis.status !== 'completed' &&
+          analysis.status !== 'failed' && (
+            <Card className="p-8">
+              <div className="flex flex-col items-center space-y-4">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <div className="text-center space-y-2">
+                  <h3 className="text-xl font-semibold">Analysis in Progress</h3>
+                  <p className="text-muted-foreground capitalize">
+                    Status: {analysis.status}
+                  </p>
 
-            <TabsContent value="one-pager" className="mt-6">
-              <OnePager onePager={analysis.one_pager} />
-            </TabsContent>
+                  {analysis.progress !== undefined && (
+                    <div className="w-full max-w-md mt-4">
+                      <div className="flex justify-between text-sm mb-2">
+                        <span>Progress</span>
+                        <span className="font-semibold">
+                          {analysis.progress}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                        <div
+                          className="bg-primary h-full rounded-full transition-all duration-300 ease-out"
+                          style={{ width: `${analysis.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
 
-            <TabsContent value="scope" className="mt-6">
-              <ScopeOfWork scopeOfWork={analysis.scope_of_work} />
-            </TabsContent>
+                  <p className="text-sm text-muted-foreground mt-4">
+                    This may take a few minutes. The page will update
+                    automatically.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          )}
 
-            <TabsContent value="sections" className="mt-6">
-              <RFPSections rfpSections={analysis.rfp_sections} />
-            </TabsContent>
+        {/* Results */}
+        {!isLoading &&
+          !isError &&
+          analysis &&
+          analysis.status === 'completed' && (
+            <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
+              <TabsList className="grid w-full grid-cols-5">
+                <TabsTrigger value="one-pager">One Pager</TabsTrigger>
+                <TabsTrigger value="scope" disabled={!analysis.scope_of_work}>
+                  Scope of Work
+                </TabsTrigger>
+                <TabsTrigger value="sections" disabled={!analysis.rfp_sections}>
+                  RFP Sections
+                </TabsTrigger>
+                <TabsTrigger value="datasheet" disabled={!analysis.data_sheet}>
+                  Data Sheet
+                </TabsTrigger>
+                <TabsTrigger value="templates" disabled={!analysis.templates}>
+                  Templates
+                </TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="datasheet" className="mt-6">
-              <DataSheet dataSheet={analysis.data_sheet} />
-            </TabsContent>
+              <TabsContent value="one-pager" className="mt-6">
+                <OnePager onePager={analysis.one_pager} />
+              </TabsContent>
 
-            <TabsContent value="templates" className="mt-6">
-              <Templates templates={analysis.templates} />
-            </TabsContent>
-          </Tabs>
-        )}
+              <TabsContent value="scope" className="mt-6">
+                <ScopeOfWork scopeOfWork={analysis.scope_of_work} />
+              </TabsContent>
+
+              <TabsContent value="sections" className="mt-6">
+                <RFPSections rfpSections={analysis.rfp_sections} />
+              </TabsContent>
+
+              <TabsContent value="datasheet" className="mt-6">
+                <DataSheet dataSheet={analysis.data_sheet} />
+              </TabsContent>
+
+              <TabsContent value="templates" className="mt-6">
+                <Templates templates={analysis.templates} />
+              </TabsContent>
+            </Tabs>
+          )}
       </div>
     </div>
   );
