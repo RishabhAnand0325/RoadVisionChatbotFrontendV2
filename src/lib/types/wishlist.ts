@@ -193,6 +193,7 @@ export interface TenderAnalysis {
 
 export interface HistoryData {
   id: string;
+  tender_ref_number: string;  // Used for matching wishlisted tenders
   title: string;
   authority: string;
   value: number;
@@ -216,7 +217,7 @@ export interface HistoryPageResponse {
 export interface WishlistHistoryUIProps {
   navigate: NavigateFunction;
   data: HistoryPageResponse;
-  handleViewTender: (id: string) => void;
+  handleViewTender: (id: string, tdr: string) => void;
   handleRemoveFromWishlist: (id: string) => Promise<void>;
 }
 

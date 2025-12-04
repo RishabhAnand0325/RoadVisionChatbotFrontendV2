@@ -138,6 +138,33 @@ export const deleteAnalysis = async (analysisId: string): Promise<DeleteAnalysis
   }
 };
 
+/**
+ * Check if analysis exists for a tender
+ * GET /api/v1/tenderiq/analyze/{tenderId}
+ * @param tenderId - Tender reference number (TDR)
+ * @returns Analysis data if it exists, null if not
+ */
+export const checkAnalysisExists = async (tenderId: string): Promise<boolean> => {
+  try {
+    const url = `${ANALYZE_API_BASE}/${tenderId}`;
+    const response = await fetch(url, {
+      headers: getAuthHeaders(),
+    });
+    
+    if (response.status === 404) {
+      return false;
+    }
+    
+    if (!response.ok) {
+      throw new Error(`Failed to check analysis: ${response.status}`);
+    }
+    
+    return true;
+  } catch (error) {
+    console.warn(`Error checking analysis for tender ${tenderId}:`, error);
+    return false;
+  }
+};
 // ============================================================================
 // Risk Assessment Endpoints
 // ============================================================================

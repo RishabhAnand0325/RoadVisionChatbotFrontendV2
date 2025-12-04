@@ -39,7 +39,7 @@ const capitalizeAnalysisState = (state: string): string => {
   return stateMap[state] || state.charAt(0).toUpperCase() + state.slice(1);
 };
 
-export function TenderCard({ data, handleViewTender, handleRemoveFromWishlist, onUpdateResults }: { data: HistoryData, handleViewTender: (id: string) => void, handleRemoveFromWishlist: (id: string) => Promise<void>, onUpdateResults?: (id: string, results: 'won' | 'rejected' | 'incomplete' | 'pending') => Promise<void> }) {
+export function TenderCard({ data, handleViewTender, handleRemoveFromWishlist, onUpdateResults }: { data: HistoryData, handleViewTender: (id: string, tdr: string) => void, handleRemoveFromWishlist: (id: string) => Promise<void>, onUpdateResults?: (id: string, results: 'won' | 'rejected' | 'incomplete' | 'pending') => Promise<void> }) {
   const [isUpdatingResults, setIsUpdatingResults] = useState(false);
 
   const handleResultsChange = async (newResults: string) => {
@@ -128,7 +128,7 @@ export function TenderCard({ data, handleViewTender, handleRemoveFromWishlist, o
         </div>
         <div className="w-full flex justify-between items-center mt-4">
           <div className="flex gap-2 items-center">
-            <Button variant="outline" size="sm" onClick={() => handleViewTender(data.id)}>
+            <Button variant="outline" size="sm" onClick={() => handleViewTender(data.id, data.tender_ref_number)}>
               <Eye className="h-4 w-4 mr-2" />
               View Tender
             </Button>
@@ -238,7 +238,16 @@ export default function WishlistHistoryUI({ navigate, data, handleViewTender, ha
     }
     const tendersWonValueMetadata: MetadataCardProps = {
       title: 'Tenders Won Value',
-      value: "Rs." + tendersToUse.filter(tender => tender.results === 'won').reduce((total, tender) => total + tender.value, 0).toLocaleString('en-IN') + "Cr",
+      value: (() => {
+        const total = tendersToUse.filter(tender => tender.results === 'won').reduce((sum, tender) => sum + tender.value, 0);
+        if (total >= 10000000) {
+          return `₹${(total / 10000000).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Cr`;
+        } else if (total >= 100000) {
+          return `₹${(total / 100000).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} L`;
+        } else {
+          return `₹${total.toLocaleString('en-IN')}`;
+        }
+      })(),
       LucideIcon: IndianRupee,
       description: 'Total value won',
     }

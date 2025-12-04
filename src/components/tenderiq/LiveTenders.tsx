@@ -194,7 +194,28 @@ const LiveTenders = ({ onBack }: LiveTendersProps) => {
     const minValueRupees = minValue ? parseFloat(minValue) * 10000000 : null; // Convert crores to rupees
     const maxValueRupees = maxValue ? parseFloat(maxValue) * 10000000 : null; // Convert crores to rupees
 
-    return filterTenders(tenders, {
+    // First, filter out corrigendum tenders from listings (they should only appear in tender history)
+    const nonCorrigendumTenders = tenders.filter(tender => {
+      if (!tender) return true;
+      
+      // Check all relevant fields for corrigendum/amendment keywords
+      const fieldsToCheck = [
+        tender.tender_name || '',
+        tender.summary || '',
+        tender.tender_brief || '',
+        tender.tender_details || '',
+        tender.description || '',
+        tender.tdr || '',
+      ];
+      
+      const fullText = fieldsToCheck.join(' ').toLowerCase();
+      
+      // Filter out if contains corrigendum or amendment keywords
+      return !fullText.includes('corrigendum') && 
+             !fullText.includes('amendment');
+    });
+
+    return filterTenders(nonCorrigendumTenders, {
       searchTerm,
       category: selectedCategory,
       location: selectedLocation,

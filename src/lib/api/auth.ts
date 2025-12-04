@@ -99,3 +99,43 @@ export function removeToken(): void {
 export function isAuthenticated(): boolean {
   return !!getToken();
 }
+
+/**
+ * Get user preferences
+ */
+export async function getUserPreferences(): Promise<{ auto_analyze_on_wishlist: boolean }> {
+  const token = getToken();
+  const response = await fetch(`${API_BASE_URL}/auth/preferences`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch user preferences');
+  }
+
+  return response.json();
+}
+
+/**
+ * Update auto-analyze on wishlist preference
+ */
+export async function updateAutoAnalyzePreference(enabled: boolean): Promise<{ auto_analyze_on_wishlist: boolean; message: string }> {
+  const token = getToken();
+  const response = await fetch(`${API_BASE_URL}/auth/preferences/auto-analyze?enabled=${enabled}`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update preferences');
+  }
+
+  return response.json();
+}

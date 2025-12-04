@@ -1,6 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { performTenderAction } from '@/lib/api/tenderiq';
+import { checkAnalysisExists } from '@/lib/api/analyze';
+import { getUserPreferences } from '@/lib/api/auth';
 import { TenderActionRequest } from '@/lib/types/tenderiq.types';
 
 /**
@@ -25,11 +27,31 @@ export function useTenderActions() {
         }
       });
       
+      // For adding to wishlist, check if analysis already exists and user preference
+      let descriptionText = 'Tender added to wishlist.';
+      if (!currentState) {
+        try {
+          const userPrefs = await getUserPreferences();
+          const analysisExists = await checkAnalysisExists(tenderId);
+          
+          if (userPrefs.auto_analyze_on_wishlist) {
+            descriptionText = analysisExists 
+              ? 'Tender added to wishlist. Analysis for the tender already exists.'
+              : 'Tender added to wishlist. Analysis for the tender has also begun.';
+          } else {
+            descriptionText = 'Tender added to wishlist.';
+          }
+        } catch (error) {
+          // If check fails, use the default message
+          descriptionText = 'Tender added to wishlist.';
+        }
+      }
+      
       toast({
         title: currentState ? 'Removed from wishlist' : 'Added to wishlist',
         description: currentState
           ? 'Tender removed from wishlist.'
-          : 'Tender added to wishlist.',
+          : descriptionText,
       });
       
       // Sync with backend in the background

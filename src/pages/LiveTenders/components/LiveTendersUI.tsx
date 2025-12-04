@@ -12,6 +12,7 @@ import { BackButton } from '@/components/common/BackButton';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
+import { WishlistPreferences } from '@/components/tenderiq/WishlistPreferences';
 
 // Helper to format dates in consistent format (e.g., "1 Dec 2025")
 const formatDate = (dateStr: string | null | undefined): string => {
@@ -53,10 +54,9 @@ interface LiveTendersUIProps {
   report: Report | undefined;
   status: "idle" | "streaming" | "complete" | "error";
   onAddToWishlist: (tenderId: string, e: React.MouseEvent) => void;
-  onViewTender: (tenderId: string) => void;
+  onViewTender: (tenderId: string, tdr?: string) => void;
   onNavigateToWishlist: () => void;
   onAskAI: (tenderId: string) => void;
-  isInWishlist: (tenderId: string) => boolean;
   onChangeDate: (date: string) => void;
   dates: ScrapeDate[]
 }
@@ -68,7 +68,6 @@ export default function LiveTendersUI({
   onViewTender,
   onNavigateToWishlist,
   onAskAI,
-  isInWishlist,
   onChangeDate,
   dates
 }: LiveTendersUIProps) {
@@ -139,14 +138,17 @@ export default function LiveTendersUI({
             <h1 className="text-3xl font-bold text-foreground">Live Tenders</h1>
             <p className="text-muted-foreground mt-1">Daily scraped opportunities from government portals</p>
           </div>
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={onNavigateToWishlist}
-          >
-            <Star className="h-4 w-4" />
-            View Wishlist
-          </Button>
+          <div className="flex gap-2">
+            <WishlistPreferences />
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={onNavigateToWishlist}
+            >
+              <Star className="h-4 w-4" />
+              View Wishlist
+            </Button>
+          </div>
         </div>
 
         {/* Search & Filters */}
@@ -310,7 +312,7 @@ export default function LiveTendersUI({
                           className="h-8 w-8 flex-shrink-0"
                           onClick={(e) => onAddToWishlist(tender.id, e)}
                         >
-                          <Star className={`h-4 w-4 ${isInWishlist(tender.id) ? 'fill-warning text-warning' : ''}`} />
+                          <Star className={`h-4 w-4 ${tender.is_wishlisted ? 'fill-warning text-warning' : ''}`} />
                         </Button>
                       </div>
 
@@ -405,7 +407,7 @@ export default function LiveTendersUI({
                           className="gap-2 w-full"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onViewTender(tender.id);
+                            onViewTender(tender.id, tender.tdr);
                           }}
                         >
                           <Eye className="h-3.5 w-3.5" />

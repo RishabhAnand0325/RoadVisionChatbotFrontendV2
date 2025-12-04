@@ -32,8 +32,9 @@ export default function AnalyzeTender() {
     enabled: !!id,
     retry: 0, // Don't retry on 404
     // Poll ONLY when analysis is actively in progress (not completed, not failed, not just existing)
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
       // Only poll if analysis has a status that indicates it's being processed
+      const data = query.state.data as TenderAnalysisResponse | undefined;
       if (data && data.status && data.status !== 'completed' && data.status !== 'failed') {
         // Poll every 20 seconds while processing
         return 20000;

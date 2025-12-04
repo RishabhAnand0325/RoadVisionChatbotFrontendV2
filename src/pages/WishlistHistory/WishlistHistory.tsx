@@ -46,8 +46,9 @@ const WishlistHistory = () => {
     }
   };
 
-  const handleViewTender = (id: string) => {
-    navigate(`/tenderiq/view/${id}`);
+  const handleViewTender = (id: string, tdr: string) => {
+    const tdrParam = tdr ? `?tdr=${encodeURIComponent(tdr)}` : '';
+    navigate(`/tenderiq/view/${id}${tdrParam}`);
   };
 
   useEffect(() => {

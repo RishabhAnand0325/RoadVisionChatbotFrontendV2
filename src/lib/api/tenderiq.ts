@@ -332,8 +332,20 @@ export const performTenderAction = async (
     });
     
     console.log(`Action ${action.action} on tender ${tenderId} successful.`);
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Error in performTenderAction for tender ${tenderId}:`, error);
+    
+    // Provide user-friendly error messages
+    if (error?.status === 404) {
+      throw new Error(
+        `Tender ${tenderId} not found in database. This may happen if the tender was deleted or your data is out of sync. Try refreshing the page.`
+      );
+    }
+    
+    if (error?.status === 401) {
+      throw new Error('You are not authorized to perform this action. Please log in again.');
+    }
+    
     throw error;
   }
 };

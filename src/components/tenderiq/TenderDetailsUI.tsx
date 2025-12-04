@@ -72,6 +72,17 @@ const formatDate = (dateStr: string | null | undefined): string => {
   }
 };
 
+// Helper function to clean description by stripping corrigendum/amendment prefixes
+const cleanDescription = (text: string | null | undefined): string => {
+  if (!text) return '';
+  // Remove common corrigendum/amendment prefixes
+  return text
+    .replace(/^(Corrigendum\s*:?\s*)/i, '')
+    .replace(/^(Amendment\s*:?\s*)/i, '')
+    .replace(/^(Tender\s+For\s+)/i, '')
+    .trim();
+};
+
 // Helper function to group and deduplicate history items by action and date
 const deduplicateHistory = (history: any[]) => {
   if (!history || history.length === 0) return [];
@@ -151,7 +162,7 @@ export default function TenderDetailsUI({
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-foreground">{tender.tender_name}</h1>
+              <h1 className="text-3xl font-bold text-foreground">{tender.tender_title || tender.tender_name}</h1>
               <Badge variant="outline" className={`${tender.status === 'new' ? 'border-success text-success' :
                 tender.status === 'won' ? 'border-success text-success' :
                   tender.status === 'lost' ? 'border-destructive text-destructive' :
@@ -161,6 +172,11 @@ export default function TenderDetailsUI({
               </Badge>
             </div>
             <p className="text-muted-foreground">{tender.tendering_authority}</p>
+            {(tender.tender_details && tender.tender_details.trim()) || (tender.description && tender.description.trim()) || (tender.summary && tender.summary.trim()) ? (
+              <p className="text-sm text-muted-foreground mt-3 leading-relaxed line-clamp-4">
+                {cleanDescription(tender.tender_details?.trim() || tender.description?.trim() || tender.summary?.trim())}
+              </p>
+            ) : null}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onAddToWishlist}>
