@@ -46,11 +46,6 @@ const moduleGroups = [
     label: "AI Intelligence",
     items: [
       {
-        title: "LegalIQ",
-        url: "/legaliq",
-        icon: Scale,
-      },
-      {
         title: "TenderIQ",
         url: "/tenderiq",
         icon: FileText,

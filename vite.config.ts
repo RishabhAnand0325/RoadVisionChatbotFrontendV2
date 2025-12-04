@@ -7,17 +7,17 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 3000,
+    port: 3001,
     middlewareMode: false,
-    allowedHosts: [".ngrok-free.app", ".lhr.life"],
+    allowedHosts: [".ngrok-free.app", ".lhr.life", "ceigall.roadvision.ai"],
     proxy: {
       "/api": {
-        target: "http://localhost:5000",
+        target: "http://localhost:5001",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, "/api/v1"),
       },
       "/docs": {
-        target: "http://localhost:5000",
+        target: "http://localhost:5001",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/docs/, "/docs"),
       },

@@ -5,7 +5,6 @@ import { getTenderById } from '@/data/sampleTenders';
 import { fetchBidSynopsis, saveBidSynopsis, loadBidSynopsis } from '@/lib/api/bidsynopsis.api';
 import { SynopsisContent } from '@/lib/types/bidsynopsis.types';
 import BidSynopsisUI from './components/BidSynopsisUI';
-import { Button } from '@/components/ui/button';
 
 export default function BidSynopsis() {
   const { id } = useParams();
@@ -130,7 +129,13 @@ export default function BidSynopsis() {
     }
   };
 
-  if (isLoading) {
+  const handleAnalyzeTender = () => {
+    if (id) {
+      navigate(`/tenderiq/analyze/${id}`);
+    }
+  };
+
+  if (isLoading || !synopsisContent) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -141,22 +146,10 @@ export default function BidSynopsis() {
     );
   }
 
-  if (!synopsisContent) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground">Failed to load bid synopsis data</p>
-          <Button className="mt-4" onClick={() => navigate(-1)}>
-            Go Back
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <BidSynopsisUI
       tenderTitle={tender?.title}
+      tenderId={id}
       synopsisContent={synopsisContent}
       ceigallData={ceigallData}
       requirementData={requirementData}
@@ -169,6 +162,7 @@ export default function BidSynopsis() {
       onSave={handleSave}
       onExportPDF={handleExportPDF}
       onFileUpload={handleFileUpload}
+      onAnalyzeTender={handleAnalyzeTender}
     />
   );
 }

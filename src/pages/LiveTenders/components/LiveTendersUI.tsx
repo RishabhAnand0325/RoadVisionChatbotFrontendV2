@@ -1,16 +1,57 @@
-import { Search, Calendar, Filter, Star, Eye, MessageSquare, Loader2, CurrencyIcon } from 'lucide-react';
+import { Search, Calendar as CalendarIcon, Filter, Star, Eye, MessageSquare, Loader2, CurrencyIcon } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Query, Report, ScrapeDate, Tender } from '@/lib/types/tenderiq.types';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { getCurrencyNumberFromText, getCurrencyTextFromNumber } from '@/lib/utils/conversions';
 import { Select, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { SelectTrigger } from '@radix-ui/react-select';
+import { BackButton } from '@/components/common/BackButton';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+
+// Helper to format dates in consistent format (e.g., "1 Dec 2025")
+const formatDate = (dateStr: string | null | undefined): string => {
+  if (!dateStr || dateStr === 'Invalid Date' || dateStr === 'N/A') return 'Not Specified';
+
+  try {
+    let date: Date;
+
+    // Try ISO format first (YYYY-MM-DD)
+    const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      const [, year, month, day] = isoMatch;
+      date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    } else {
+      // Try DD-MM-YYYY format (Indian format)
+      const ddmmyyyyMatch = dateStr.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+      if (ddmmyyyyMatch) {
+        const [, day, month, year] = ddmmyyyyMatch;
+        date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      } else {
+        // Try standard Date parsing (ISO or other formats)
+        date = new Date(dateStr);
+      }
+    }
+
+    if (isNaN(date.getTime())) return 'Not Specified';
+
+    return date.toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  } catch {
+    return 'Not Specified';
+  }
+};
 
 interface LiveTendersUIProps {
   report: Report | undefined;
+  status: "idle" | "streaming" | "complete" | "error";
   onAddToWishlist: (tenderId: string, e: React.MouseEvent) => void;
   onViewTender: (tenderId: string) => void;
   onNavigateToWishlist: () => void;
@@ -22,6 +63,7 @@ interface LiveTendersUIProps {
 
 export default function LiveTendersUI({
   report,
+  status,
   onAddToWishlist,
   onViewTender,
   onNavigateToWishlist,
@@ -35,6 +77,8 @@ export default function LiveTendersUI({
   const [totalTenders, setTotalTenders] = useState(0);
   const [shownTenders, setShownTenders] = useState(0);
   const [minPrice, setMinPrice] = useState("");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const filterReport = () => {
     if (!report || report == null) {
@@ -46,7 +90,7 @@ export default function LiveTendersUI({
     report.queries.forEach((query) => {
       let tenders: Tender[] = []
       query.tenders.forEach((tender) => {
-        if ((tender.tender_name.toLowerCase().includes(searchQuery.toLowerCase()) 
+        if ((tender.tender_name.toLowerCase().includes(searchQuery.toLowerCase())
           || query.query_name.toLowerCase().includes(searchQuery.toLowerCase())
           || tender.company_name.toLowerCase().includes(searchQuery.toLowerCase())
           || tender.state.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -67,7 +111,6 @@ export default function LiveTendersUI({
   }, [searchQuery, report, minPrice])
 
   useEffect(() => {
-    setFilteredQueries(report ? report.queries : [])
     if (!report || report == null) return
     let count = 0;
     report.queries.forEach((query) => {
@@ -87,14 +130,17 @@ export default function LiveTendersUI({
   return (
     <div className="min-h-screen bg-background">
       <div className="p-8 space-y-6 max-w-[1600px] mx-auto">
+        {/* Back Button */}
+        <BackButton to="/" />
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Live Tenders</h1>
             <p className="text-muted-foreground mt-1">Daily scraped opportunities from government portals</p>
           </div>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="gap-2"
             onClick={onNavigateToWishlist}
           >
@@ -104,72 +150,138 @@ export default function LiveTendersUI({
         </div>
 
         {/* Search & Filters */}
-        <Card className="p-4">
-          <div className="flex gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search by title, authority, category, or location..."
-                className="pl-10"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+        <Card className="p-4 border-2">
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_200px_180px] gap-3 items-center">
+            {/* Search Bar */}
+            <div className="w-full">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search by title, authority, tender no."
+                  className="pl-10 h-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
             </div>
-            <div>
+
+            {/* Minimum Price */}
+            <div className="w-full">
               <Input
                 type='number'
-                placeholder='Minimum price (in crores)'
+                placeholder='Minimum Price (in crores)'
                 value={minPrice}
                 onChange={(e) => setMinPrice(e.target.value)}
+                className="h-10"
               />
             </div>
-            <Select onValueChange={onChangeDate}>
-              <SelectTrigger className='px-2 py-1 bg-muted border rounded-md text-muted-foreground'>
-                <SelectValue placeholder="Select a date" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem
-                  value="last_2_days"
-                >
-                  Last 2 days
-                </SelectItem>
-                <SelectItem
-                  value="last_5_days"
-                >
-                  Last 5 days
-                </SelectItem>
-                <SelectItem
-                  value="last_7_days"
-                >
-                  Last 7 days
-                </SelectItem>
-                <SelectItem
-                  value="last_30_days"
-                >
-                  Last 30 days
-                </SelectItem>
-                {dates.map((date) => (
-                  <SelectItem
-                    key={date.id}
-                    value={date.id}
+
+            {/* Date Filter Dropdown with Calendar */}
+            <div className="w-full">
+              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="h-10 w-full justify-start text-left font-normal"
                   >
-                    {date.date}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                    <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                    {selectedDate ? format(selectedDate, "dd MMM yyyy") : "Select Date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end" sideOffset={4}>
+                  <div className="px-1 pt-1 pb-1.5 border-b space-y-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start text-sm h-9 px-2"
+                      onClick={() => {
+                        setSelectedDate(undefined);
+                        setCalendarOpen(false);
+                        onChangeDate("last_2_days");
+                      }}
+                    >
+                      Last 2 Days
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start text-sm h-9 px-2"
+                      onClick={() => {
+                        setSelectedDate(undefined);
+                        setCalendarOpen(false);
+                        onChangeDate("last_5_days");
+                      }}
+                    >
+                      Last 5 Days
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start text-sm h-9 px-2"
+                      onClick={() => {
+                        setSelectedDate(undefined);
+                        setCalendarOpen(false);
+                        onChangeDate("last_7_days");
+                      }}
+                    >
+                      Last 7 Days
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start text-sm h-9 px-2"
+                      onClick={() => {
+                        setSelectedDate(undefined);
+                        setCalendarOpen(false);
+                        onChangeDate("last_30_days");
+                      }}
+                    >
+                      Last 30 Days
+                    </Button>
+                  </div>
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(date) => {
+                      setSelectedDate(date);
+                      setCalendarOpen(false);
+                      if (date) {
+                        const formattedDate = format(date, "dd-MM-yyyy");
+                        onChangeDate(formattedDate);
+                      }
+                    }}
+                    className="p-1"
+                    classNames={{
+                      months: "flex flex-col space-y-2 items-center",
+                      month: "space-y-2",
+                      table: "border-collapse mx-auto",
+                      head_row: "flex justify-center",
+                      row: "flex mt-1 justify-center",
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
         </Card>
 
         {/* Results Count */}
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing {shownTenders} of {totalTenders} tenders
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-muted-foreground">
+              Showing {shownTenders} of {totalTenders} tenders
+            </p>
+            {status === "streaming" && (
+              <div className="flex items-center gap-1.5">
+                <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                <span className="text-xs text-blue-600 font-medium">Loading more...</span>
+              </div>
+            )}
+          </div>
         </div>
 
-        {report == undefined && 
+        {report == undefined &&
           <Card className="p-12 text-center">
             <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
             <p className="text-muted-foreground mt-4">Loading daily tenders...</p>
@@ -177,12 +289,12 @@ export default function LiveTendersUI({
         }
 
         {/* Tender Grid */}
-        {report != undefined && 
+        {report != undefined &&
           <div className="">
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
-            {filteredQueries.map((query) => (
+              {filteredQueries.map((query) => (
                 query.tenders.map((tender, index) => (
-                  <Card 
+                  <Card
                     key={tender.id}
                     className="p-6 hover:shadow-lg transition-all cursor-pointer group"
                   >
@@ -190,7 +302,7 @@ export default function LiveTendersUI({
                       {/* Header */}
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="font-semibold text-base line-clamp-2 group-hover:text-primary transition-colors flex-1">
-                          {index + 1}. {tender.tender_name}
+                          {tender.tender_name}
                         </h3>
                         <Button
                           variant="ghost"
@@ -209,14 +321,13 @@ export default function LiveTendersUI({
                           <Badge variant="secondary" className="text-xs">
                             {query.query_name}
                           </Badge>
-                          <Badge 
-                            variant="outline" 
-                            className={`text-xs ${
-                              tender.state === 'live' ? 'border-success text-success' :
+                          <Badge
+                            variant="outline"
+                            className={`text-xs ${tender.state === 'live' ? 'border-success text-success' :
                               tender.state === 'won' ? 'border-success text-success' :
-                              tender.state === 'lost' ? 'border-destructive text-destructive' :
-                              'border-warning text-warning'
-                            }`}
+                                tender.state === 'lost' ? 'border-destructive text-destructive' :
+                                  'border-warning text-warning'
+                              }`}
                           >
                             {tender.city}
                           </Badge>
@@ -233,22 +344,41 @@ export default function LiveTendersUI({
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">EMD</span>
-                          <span className="font-medium">{tender.emd}</span>
+                          <span className="font-medium">
+                            {tender.emd ? (() => {
+                              // Parse EMD - it comes in format "INR 10703000.0 /-" or "Refer document"
+                              let emdValue = 0;
+                              if (typeof tender.emd === 'string') {
+                                // Extract number from string like "INR 10703000.0 /-"
+                                const match = tender.emd.match(/[\d.]+/);
+                                if (match) {
+                                  emdValue = parseFloat(match[0]);
+                                }
+                              } else {
+                                emdValue = tender.emd;
+                              }
+
+                              if (isNaN(emdValue) || emdValue === 0) return 'Refer Document';
+                              if (emdValue >= 10000000) {
+                                return `₹${(emdValue / 10000000).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Cr`;
+                              } else if (emdValue >= 100000) {
+                                return `₹${(emdValue / 100000).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} L`;
+                              } else {
+                                return `₹${emdValue.toLocaleString('en-IN')}`;
+                              }
+                            })() : 'Refer Document'}
+                          </span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Publish Date</span>
                           <span className="font-medium">
-                            {tender.publish_date}
+                            {formatDate(tender.publish_date)}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Due Date</span>
                           <span className="font-medium">
-                            {new Date(tender.due_date).toLocaleDateString('en-IN', { 
-                              day: 'numeric', 
-                              month: 'short', 
-                              year: 'numeric' 
-                            })}
+                            {formatDate(tender.due_date)}
                           </span>
                         </div>
                       </div>
@@ -270,8 +400,8 @@ export default function LiveTendersUI({
 
                       {/* Actions */}
                       <div className="flex gap-2 w-full grow items-end">
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           className="gap-2 w-full"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -297,7 +427,7 @@ export default function LiveTendersUI({
                     </div>
                   </Card>
                 ))
-            ))}
+              ))}
             </div>
           </div>
         }

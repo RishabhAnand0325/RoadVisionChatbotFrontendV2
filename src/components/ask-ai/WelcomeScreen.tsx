@@ -5,22 +5,7 @@ interface WelcomeScreenProps {
 }
 
 const examplePrompts = [
-  {
-    title: "Summarize document",
-    text: "Please provide a comprehensive summary of the uploaded document.",
-  },
-  {
-    title: "Key findings",
-    text: "What are the key findings and main points in this document?",
-  },
-  {
-    title: "Legal analysis",
-    text: "Provide a legal analysis of the terms and conditions in this document.",
-  },
-  {
-    title: "Risk assessment",
-    text: "Identify potential risks and issues in this agreement.",
-  },
+
 ];
 
 export function WelcomeScreen({ onPromptClick }: WelcomeScreenProps) {

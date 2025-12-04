@@ -1,13 +1,4 @@
-import {
-  ArrowLeft,
-  AlertTriangle,
-  Loader2,
-  Download,
-  FileDown,
-  ChevronDown,
-  FileText,
-  PlayCircle,
-} from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Play, Loader2, Download, FileDown, ChevronDown, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -23,6 +14,16 @@ import ScopeOfWork from './ScopeOfWork';
 import RFPSections from './RFPSections';
 import DataSheet from './DataSheet';
 import Templates from './Templates';
+import { BackButton } from '@/components/common/BackButton';
+
+// Helper to capitalize status words
+const capitalizeStatus = (status: string): string => {
+  if (!status) return '';
+  return status
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
 
 interface AnalyzeTenderUIProps {
   analysis: TenderAnalysisResponse | undefined;
@@ -30,13 +31,12 @@ interface AnalyzeTenderUIProps {
   isError: boolean;
   error: string | null;
   activeTab: string;
+  tenderId?: string;
   onTabChange: (tab: string) => void;
   onBack: () => void;
   onDownloadReport: (format: 'excel' | 'word') => void;
-  onNavigateToBidSynopsis: () => void;
-  onTriggerAnalysis: () => void;
-  isTriggering: boolean;
-  tenderId?: string;
+  onViewBidSynopsis?: () => void;
+  onStartAnalysis?: () => void;
 }
 
 export default function AnalyzeTenderUI({
@@ -45,134 +45,111 @@ export default function AnalyzeTenderUI({
   isError,
   error,
   activeTab,
+  tenderId,
   onTabChange,
   onBack,
   onDownloadReport,
-  onNavigateToBidSynopsis,
-  onTriggerAnalysis,
-  isTriggering,
-  tenderId,
+  onViewBidSynopsis,
+  onStartAnalysis,
 }: AnalyzeTenderUIProps) {
+  const hasAnalysisData =
+    !!analysis &&
+    !!(
+      analysis.one_pager ||
+      analysis.scope_of_work ||
+      analysis.rfp_sections ||
+      analysis.data_sheet ||
+      analysis.templates
+    );
+
   return (
     <div className="min-h-screen bg-background">
       <div className="p-8 space-y-6 max-w-[1800px] mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={onBack}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
+            <BackButton onClick={onBack} />
             <div>
               <h1 className="text-3xl font-bold text-foreground">Analyze Tender</h1>
               <p className="text-muted-foreground mt-1">
                 {isLoading
                   ? 'Loading analysis...'
                   : analysis
-                  ? `Status: ${analysis.status || 'Processing'}`
-                  : 'Analysis Results'}
+                    ? `Status: ${capitalizeStatus(analysis.status || 'Processing')}`
+                    : 'Analysis Results'}
               </p>
             </div>
           </div>
-
-          {/* HEADER BUTTONS */}
-          <div className="flex gap-2">
-            {/* Show trigger button when no analysis OR failed OR not completed */}
-            {(!analysis || isError || (analysis && analysis.status !== 'completed')) &&
-              tenderId && (
-                <Button
-                  variant="default"
-                  onClick={onTriggerAnalysis}
-                  disabled={isTriggering}
-                >
-                  {isTriggering ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Starting Analysis...
-                    </>
-                  ) : (
-                    <>
-                      <PlayCircle className="h-4 w-4 mr-2" />
-                      Analyze Tender Now
-                    </>
-                  )}
+          {!isLoading && analysis && analysis.status === 'completed' && (
+            <div className="flex gap-2">
+              {onViewBidSynopsis && tenderId && (
+                <Button variant="outline" onClick={onViewBidSynopsis}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Bid Synopsis
                 </Button>
               )}
-
-            {/* When Completed: Show Synopsis + Download */}
-            {analysis && analysis.status === 'completed' && (
-              <>
-                <Button variant="outline" onClick={onNavigateToBidSynopsis}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Draft Bid Synopsis
-                </Button>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
-                      <FileDown className="h-4 w-4 mr-2" />
-                      Download Report
-                      <ChevronDown className="h-4 w-4 ml-2" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onDownloadReport('excel')}>
-                      <span className="mr-2">📊</span>
-                      Download as Excel
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem onClick={() => onDownloadReport('word')}>
-                      <span className="mr-2">📝</span>
-                      Download as Word
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            )}
-          </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <FileDown className="h-4 w-4 mr-2" />
+                    Download Report
+                    <ChevronDown className="h-4 w-4 ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {/* <DropdownMenuItem onClick={() => onDownloadReport('pdf')}>
+                    <span className="mr-2">📄</span>
+                    Download as PDF
+                  </DropdownMenuItem> */}
+                  <DropdownMenuItem onClick={() => onDownloadReport('excel')}>
+                    <span className="mr-2">📊</span>
+                    Download as Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onDownloadReport('word')}>
+                    <span className="mr-2">📝</span>
+                    Download as Word
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
         </div>
 
-        {/* Error State */}
-        {isError && (
-          <Card className="p-8 border-blue-200 bg-blue-50">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                <AlertTriangle className="h-8 w-8 text-blue-600" />
+        {/* Error / No-analysis State */}
+        {isError && error && (
+          <Card className="p-8 bg-gradient-to-br from-blue-50 to-blue-50/50 border-blue-200 dark:from-blue-950/20 dark:to-blue-950/10 dark:border-blue-800">
+            <div className="space-y-6">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-6 w-6 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <h3 className="font-semibold text-blue-900 dark:text-blue-300">
+                    {error.includes('Analysis not found')
+                      ? 'Analysis Not Found'
+                      : 'Analysis Error'}
+                  </h3>
+                  <p className="text-sm text-blue-800 dark:text-blue-400">
+                    {error.includes('Analysis not found')
+                      ? 'No analysis exists for this tender yet. Click the button below to start a new AI analysis.'
+                      : error}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xl font-semibold text-blue-900 mb-2">
-                  Analysis Not Available
-                </h3>
-                <p className="text-blue-700 mb-4">
-                  This tender hasn't been analyzed yet. Click the button below to
-                  start the analysis.
-                </p>
-              </div>
-
-              {tenderId && (
-                <Button size="lg" onClick={onTriggerAnalysis} disabled={isTriggering}>
-                  {isTriggering ? (
-                    <>
-                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                      Starting Analysis...
-                    </>
-                  ) : (
-                    <>
-                      <PlayCircle className="h-5 w-5 mr-2" />
-                      Analyze Tender Now
-                    </>
-                  )}
-                </Button>
+              {onStartAnalysis && tenderId && (
+                <div className="pt-2">
+                  <Button 
+                    onClick={onStartAnalysis}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all duration-200 gap-2"
+                  >
+                    <Play className="h-4 w-4" />
+                    Start AI Analysis
+                  </Button>
+                </div>
               )}
-
-              <p className="text-sm text-blue-600 mt-2">
-                Analysis typically takes 3–5 minutes to complete.
-              </p>
             </div>
           </Card>
         )}
 
-        {/* Loading */}
+        {/* Loading State */}
         {isLoading && (
           <Card className="p-8">
             <div className="flex flex-col items-center space-y-4">
@@ -182,89 +159,109 @@ export default function AnalyzeTenderUI({
           </Card>
         )}
 
-        {/* In Progress */}
+        {/* Analysis in Progress (only when genuinely running) */}
         {!isLoading &&
           analysis &&
           analysis.status !== 'completed' &&
-          analysis.status !== 'failed' && (
-            <Card className="p-8">
-              <div className="flex flex-col items-center space-y-4">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                <div className="text-center space-y-2">
-                  <h3 className="text-xl font-semibold">Analysis in Progress</h3>
-                  <p className="text-muted-foreground capitalize">
-                    Status: {analysis.status}
-                  </p>
-
-                  {analysis.progress !== undefined && (
-                    <div className="w-full max-w-md mt-4">
-                      <div className="flex justify-between text-sm mb-2">
-                        <span>Progress</span>
-                        <span className="font-semibold">
-                          {analysis.progress}%
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                        <div
-                          className="bg-primary h-full rounded-full transition-all duration-300 ease-out"
-                          style={{ width: `${analysis.progress}%` }}
-                        />
-                      </div>
+          analysis.status !== 'failed' &&
+          (analysis.progress === undefined || analysis.progress < 100) && (
+          <Card className="p-8">
+            <div className="flex flex-col items-center space-y-4">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <div className="text-center space-y-2">
+                <h3 className="text-xl font-semibold">
+                  Analysis in Progress
+                </h3>
+                <p className="text-muted-foreground capitalize">
+                  Status: {capitalizeStatus(analysis.status)}
+                </p>
+                {analysis.progress !== undefined && (
+                  <div className="w-full max-w-md mt-4">
+                    <div className="flex justify-between text-sm mb-2">
+                      <span>Progress</span>
+                      <span className="font-semibold">{analysis.progress}%</span>
                     </div>
-                  )}
+                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                      <div
+                        className="bg-primary h-full rounded-full transition-all duration-300 ease-out"
+                        style={{ width: `${analysis.progress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                <p className="text-sm text-muted-foreground mt-4">
+                  This may take a few minutes. The page will automatically update when complete.
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
 
-                  <p className="text-sm text-muted-foreground mt-4">
-                    This may take a few minutes. The page will update
-                    automatically.
-                  </p>
+        {/* Stale / empty analysis record (no data but not completed/failed) */}
+        {!isLoading &&
+          !isError &&
+          analysis &&
+          !hasAnalysisData &&
+          analysis.status !== 'completed' &&
+          analysis.status !== 'failed' && (
+            <Card className="p-8 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20 dark:from-primary/20 dark:to-primary/10 dark:border-primary/30">
+              <div className="space-y-6">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-6 w-6 text-primary flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <h3 className="font-semibold text-foreground">Analysis Record Empty</h3>
+                    <p className="text-sm text-muted-foreground">
+                      We found an analysis record for this tender, but results are not available yet. Try starting or retrying the analysis.
+                    </p>
+                  </div>
                 </div>
+                {onStartAnalysis && tenderId && (
+                  <div className="pt-2">
+                    <Button 
+                      onClick={onStartAnalysis}
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all duration-200 gap-2"
+                    >
+                      <Play className="h-4 w-4" />
+                      Retry Analysis
+                    </Button>
+                  </div>
+                )}
               </div>
             </Card>
           )}
 
-        {/* Results */}
-        {!isLoading &&
-          !isError &&
-          analysis &&
-          analysis.status === 'completed' && (
-            <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="one-pager">One Pager</TabsTrigger>
-                <TabsTrigger value="scope" disabled={!analysis.scope_of_work}>
-                  Scope of Work
-                </TabsTrigger>
-                <TabsTrigger value="sections" disabled={!analysis.rfp_sections}>
-                  RFP Sections
-                </TabsTrigger>
-                <TabsTrigger value="datasheet" disabled={!analysis.data_sheet}>
-                  Data Sheet
-                </TabsTrigger>
-                <TabsTrigger value="templates" disabled={!analysis.templates}>
-                  Templates
-                </TabsTrigger>
-              </TabsList>
+        {/* Analysis Results */}
+        {!isLoading && !isError && analysis && analysis.status === 'completed' && (
+          <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="one-pager">One Pager</TabsTrigger>
+              <TabsTrigger value="scope" disabled={!analysis.scope_of_work}>Scope of Work</TabsTrigger>
+              <TabsTrigger value="sections" disabled={!analysis.rfp_sections}>RFP Sections</TabsTrigger>
+              <TabsTrigger value="datasheet" disabled={!analysis.data_sheet}>Data Sheet</TabsTrigger>
+              <TabsTrigger value="templates" disabled={!analysis.templates}>Templates</TabsTrigger>
+            </TabsList>
 
-              <TabsContent value="one-pager" className="mt-6">
-                <OnePager onePager={analysis.one_pager} />
-              </TabsContent>
+            <TabsContent value="one-pager" className="mt-6">
+              <OnePager onePager={analysis.one_pager} />
+            </TabsContent>
 
-              <TabsContent value="scope" className="mt-6">
-                <ScopeOfWork scopeOfWork={analysis.scope_of_work} />
-              </TabsContent>
+            <TabsContent value="scope" className="mt-6">
+              <ScopeOfWork scopeOfWork={analysis.scope_of_work} />
+            </TabsContent>
 
-              <TabsContent value="sections" className="mt-6">
-                <RFPSections rfpSections={analysis.rfp_sections} />
-              </TabsContent>
+            <TabsContent value="sections" className="mt-6">
+              <RFPSections rfpSections={analysis.rfp_sections} />
+            </TabsContent>
 
-              <TabsContent value="datasheet" className="mt-6">
-                <DataSheet dataSheet={analysis.data_sheet} />
-              </TabsContent>
+            <TabsContent value="datasheet" className="mt-6">
+              <DataSheet dataSheet={analysis.data_sheet} />
+            </TabsContent>
 
-              <TabsContent value="templates" className="mt-6">
-                <Templates templates={analysis.templates} />
-              </TabsContent>
-            </Tabs>
-          )}
+            <TabsContent value="templates" className="mt-6">
+              <Templates templates={analysis.templates} />
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
     </div>
   );

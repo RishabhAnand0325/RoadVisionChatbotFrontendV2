@@ -1,13 +1,103 @@
-import { Download, Star, FileText, AlertCircle, MapPin, Calendar, DollarSign, Heart, Archive, ArrowRight } from 'lucide-react';
+import { Download, Star, FileText, AlertCircle, MapPin, Calendar, IndianRupee, Heart, Archive, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { TenderDetailsType } from '@/lib/types/tenderiq';
-import { FullTenderDetails } from '@/lib/types/tenderiq.types';
+import { FullTenderDetails, TenderHistoryItem } from '@/lib/types/tenderiq.types';
+import { BackButton } from '@/components/common/BackButton';
+import { TenderChangeHistory } from './TenderChangeHistory';
+
+// Reusable document card component to eliminate repetition
+const DocumentCard = ({ doc }: { doc: any }) => (
+  <Card className="p-4 hover:shadow-md transition-all">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-4 flex-1">
+        <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+          <FileText className="h-6 w-6 text-primary" />
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <p className="font-medium">{doc.file_name}</p>
+          </div>
+          <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
+            <span className="uppercase">{doc.file_type}</span>
+            {doc.file_size && <span>•</span>}
+            {doc.file_size && <span>{doc.file_size}</span>}
+          </div>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <Button size="sm" variant="outline" onClick={() => window.open(doc.file_url, '_blank')} disabled={!doc.file_url}>
+          View
+        </Button>
+      </div>
+    </div>
+  </Card>
+);
+
+// Helper function to safely parse dates in various formats (ISO and DD-MM-YYYY)
+const formatDate = (dateStr: string | null | undefined): string => {
+  if (!dateStr || dateStr === 'Invalid Date' || dateStr === 'N/A') return 'Not Specified';
+
+  try {
+    let date: Date;
+
+    // Try ISO format first (YYYY-MM-DD)
+    const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      const [, year, month, day] = isoMatch;
+      date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    } else {
+      // Try DD-MM-YYYY format (Indian format)
+      const ddmmyyyyMatch = dateStr.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+      if (ddmmyyyyMatch) {
+        const [, day, month, year] = ddmmyyyyMatch;
+        date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      } else {
+        // Try standard Date parsing (ISO or other formats)
+        date = new Date(dateStr);
+      }
+    }
+
+    if (isNaN(date.getTime())) return 'Not Specified';
+
+    return date.toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  } catch {
+    return 'Not Specified';
+  }
+};
+
+// Helper function to group and deduplicate history items by action and date
+const deduplicateHistory = (history: any[]) => {
+  if (!history || history.length === 0) return [];
+
+  // Group by action + date combination
+  const grouped: { [key: string]: any } = {};
+
+  history.forEach((item) => {
+    const dateStr = new Date(item.timestamp).toLocaleDateString('en-IN');
+    const key = `${item.action}|${dateStr}`;
+
+    // Keep the first occurrence, skip duplicates
+    if (!grouped[key]) {
+      grouped[key] = { ...item, count: 1 };
+    } else {
+      grouped[key].count += 1;
+    }
+  });
+
+  return Object.values(grouped);
+};
 
 interface TenderDetailsUIProps {
   tender: FullTenderDetails;
+  tenderHistory?: TenderHistoryItem[];
+  isLoadingHistory?: boolean;
   isWishlisted: boolean;
   onAddToWishlist: () => void;
   isFavorited: boolean;
@@ -19,6 +109,8 @@ interface TenderDetailsUIProps {
 
 export default function TenderDetailsUI({
   tender,
+  tenderHistory = [],
+  isLoadingHistory = false,
   isWishlisted,
   onAddToWishlist,
   isFavorited,
@@ -27,9 +119,21 @@ export default function TenderDetailsUI({
   onToggleArchive,
   onNavigate,
 }: TenderDetailsUIProps) {
+  // Debug: Check what we're getting
+  console.log('=== TENDER DETAILS UI RENDER ===');
+  console.log('tender_history array:', tender.tender_history);
+  console.log('tender_history length:', tender.tender_history?.length ?? 'undefined');
+  if (tender.tender_history && tender.tender_history.length > 0) {
+    console.log('First tender history item:', tender.tender_history[0]);
+  }
+  console.log('===== END DEBUG =====');
+
   return (
     <div className="min-h-screen bg-background">
       <div className="p-8 space-y-6 max-w-[1600px] mx-auto">
+        {/* Back Button */}
+        <BackButton to="/tenderiq" />
+
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Button variant="ghost" size="sm" onClick={() => onNavigate('/')}>
@@ -48,12 +152,11 @@ export default function TenderDetailsUI({
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-3xl font-bold text-foreground">{tender.tender_name}</h1>
-              <Badge variant="outline" className={`${
-                tender.status === 'new' ? 'border-success text-success' :
+              <Badge variant="outline" className={`${tender.status === 'new' ? 'border-success text-success' :
                 tender.status === 'won' ? 'border-success text-success' :
-                tender.status === 'lost' ? 'border-destructive text-destructive' :
-                'border-warning text-warning'
-              }`}>
+                  tender.status === 'lost' ? 'border-destructive text-destructive' :
+                    'border-warning text-warning'
+                }`}>
                 {tender.status}
               </Badge>
             </div>
@@ -96,16 +199,28 @@ export default function TenderDetailsUI({
                   <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div className="flex-1">
                     <p className="text-sm font-medium">Tender No.</p>
-                    <p className="text-sm text-muted-foreground">{tender.tender_no || tender.id}</p>
+                    <p className="text-sm text-muted-foreground">{tender.tender_no || tender.tdr || tender.tender_id_str || tender.id}</p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <DollarSign className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <IndianRupee className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div className="flex-1">
                     <p className="text-sm font-medium">Tender Value</p>
                     <p className="text-lg font-bold text-primary">
-                      {tender.value ? `₹${(parseInt(tender.tender_value) / 10000000).toFixed(2)} Cr` : "Ref Document"}
+                      {tender.tender_value ? (() => {
+                        const value = typeof tender.tender_value === 'string'
+                          ? parseInt(tender.tender_value, 10)
+                          : tender.tender_value;
+                        if (isNaN(value)) return "Ref Document";
+                        if (value >= 10000000) {
+                          return `₹${(value / 10000000).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Cr`;
+                        } else if (value >= 100000) {
+                          return `₹${(value / 100000).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} L`;
+                        } else {
+                          return `₹${value.toLocaleString('en-IN')}`;
+                        }
+                      })() : "Ref Document"}
                     </p>
                   </div>
                 </div>
@@ -115,11 +230,7 @@ export default function TenderDetailsUI({
                   <div className="flex-1">
                     <p className="text-sm font-medium">Due Date</p>
                     <p className="text-sm text-muted-foreground">
-                      {new Date(tender.due_date).toLocaleDateString('en-IN', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric'
-                      })}
+                      {formatDate(tender.due_date)}
                     </p>
                   </div>
                 </div>
@@ -128,7 +239,7 @@ export default function TenderDetailsUI({
                   <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div className="flex-1">
                     <p className="text-sm font-medium">Location</p>
-                    <p className="text-sm text-muted-foreground">{tender.location}</p>
+                    <p className="text-sm text-muted-foreground">{tender.city || tender.location || 'Not Specified'}</p>
                   </div>
                 </div>
 
@@ -137,22 +248,45 @@ export default function TenderDetailsUI({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Category</p>
-                    <Badge variant="secondary">{tender.category}</Badge>
+                    <Badge variant="secondary">{tender.category || tender.query || 'N/A'}</Badge>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">EMD</p>
-                    <p className="text-sm font-semibold">{tender.emd}</p>
+                    <p className="text-sm font-semibold">
+                      {tender.emd ? (() => {
+                        const emdValue = typeof tender.emd === 'string'
+                          ? parseInt(tender.emd, 10)
+                          : tender.emd;
+                        if (isNaN(emdValue) || emdValue === 0) return 'N/A';
+                        if (emdValue >= 10000000) {
+                          return `₹${(emdValue / 10000000).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Cr`;
+                        } else if (emdValue >= 100000) {
+                          return `₹${(emdValue / 100000).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} L`;
+                        } else {
+                          return `₹${emdValue.toLocaleString('en-IN')}`;
+                        }
+                      })() : 'N/A'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Published Date</p>
                     <p className="text-sm font-semibold">
-                      {new Date(tender.publish_date).toLocaleDateString('en-IN')}
+                      {formatDate(tender.publish_date)}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Tender Source</p>
-                    <a className="text-sm font-semibold text-blue underline" href={tender.portal_source} target='_blank'>{tender.portal_source}</a>
-                  </div>
+                  {tender.information_source && tender.information_source.trim() ? (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Tender Source</p>
+                      <a
+                        className="text-sm font-semibold text-blue underline truncate"
+                        href={tender.information_source || '#'}
+                        target='_blank'
+                        rel="noopener noreferrer"
+                      >
+                        {tender.information_source ? new URL(tender.information_source).hostname : 'Not Available'}
+                      </a>
+                    </div>
+                  ) : null}
                 </div>
 
               </div>
@@ -161,21 +295,36 @@ export default function TenderDetailsUI({
             <Card className="mt-6 p-6">
               <h2 className="font-semibold text-lg mb-3">Actions History</h2>
               <div className="space-y-3">
-                {tender.history.map((historyItem) => (
-                  <Card key={historyItem.id} className="flex flex-col p-2 gap-2">
-                    <div className='flex gap-2 items-center'>
-                      <p className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-full">{historyItem.action}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(historyItem.timestamp).toLocaleDateString('en-IN', {
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric'
-                        })}
-                      </p>
-                    </div>
-                    <p className="text-sm font-medium text-muted-foreground">{historyItem.notes}</p>
-                  </Card>
-                ))}
+                {tender.history && tender.history.length > 0 ? (
+                  deduplicateHistory(tender.history).map((historyItem, idx) => (
+                    <Card key={`${historyItem.action}-${idx}`} className="flex flex-col p-2 gap-2">
+                      <div className='flex gap-2 items-center justify-between'>
+                        <div className='flex gap-2 items-center'>
+                          <p className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-full capitalize">{historyItem.action}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(historyItem.timestamp).toLocaleDateString('en-IN', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric'
+                            })}
+                          </p>
+                        </div>
+                        {historyItem.count > 1 && (
+                          <p className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
+                            ×{historyItem.count}
+                          </p>
+                        )}
+                      </div>
+                      {historyItem.notes && (
+                        <p className="text-sm font-medium text-muted-foreground">{historyItem.notes}</p>
+                      )}
+                    </Card>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-muted-foreground">No action history yet</p>
+                  </div>
+                )}
               </div>
             </Card>
           </div>
@@ -192,37 +341,15 @@ export default function TenderDetailsUI({
               </div>
 
               <div className="space-y-3">
-                {tender.files.map((doc) => (
-                  <Card key={doc.id} className="p-4 hover:shadow-md transition-all">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4 flex-1">
-                        <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <FileText className="h-6 w-6 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">{doc.file_name}</p>
-                            {/*{doc.isAIGenerated && (
-                              <Badge variant="secondary" className="text-xs">
-                                AI Generated
-                              </Badge>
-                            )}*/}
-                          </div>
-                          <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
-                            <span className="uppercase">{doc.file_type}</span>
-                            {doc.file_size && <span>•</span>}
-                            {doc.file_size && <span>{doc.file_size}</span>}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => window.open(doc.file_url, '_blank')} disabled={!doc.file_url}>
-                          View
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
+                {tender.files && tender.files.length > 0 ? (
+                  tender.files.map((doc) => (
+                    <DocumentCard key={doc.id} doc={doc} />
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-muted-foreground">No documents available</p>
+                  </div>
+                )}
               </div>
 
               {tender.risk_level && (
@@ -241,67 +368,13 @@ export default function TenderDetailsUI({
               )}
             </Card>
 
-            <Card className="mt-6 p-6">
-              <h2 className="font-semibold text-lg mb-3">Tender History</h2>
-              <div className="space-y-3 flex flex-col gap-2">
-                {tender.tender_history.map((historyItem) => (
-                  <div key={historyItem.id} className="flex justify-between gap-4 border-b-2 p-2">
-                    <div>
-                      <div className='p-2 bg-warning rounded-full'>
-                        <Calendar className='w-4 h-4 text-white' />
-                      </div>
-                    </div>
-                    <div className='w-full'>
-                      <div className='flex flex-row items-center gap-1'>
-                        <span className='px-2 py-1 bg-muted rounded-full text-xs'>{historyItem.type}</span>
-                        <span>{new Date(historyItem.update_date).toLocaleDateString('en-IN')}</span>
-                      </div>
-                      <div>{historyItem.note}</div>
-                      <div>
-                        {historyItem.date_change && (
-                          <div className='flex text-xs items-center gap-2'><s className='text-muted-foreground'>{historyItem.date_change.from}</s> <ArrowRight className='w-4 h-4' /> <span>{historyItem.date_change.to}</span> </div>
-                        )}
-                        {historyItem.files_changed && (
-                          <div className='flex flex-col gap-1'>
-                            {historyItem.files_changed.map((doc) => (
-                              <Card key={doc.id} className="p-4 hover:shadow-md transition-all">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-4 flex-1">
-                                    <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                                      <FileText className="h-6 w-6 text-primary" />
-                                    </div>
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2">
-                                        <p className="font-medium">{doc.file_name}</p>
-                                        {/* {doc.isAIGenerated && (
-                                          <Badge variant="secondary" className="text-xs">
-                                            AI Generated
-                                          </Badge>
-                                        )} */}
-                                      </div>
-                                      <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
-                                        <span className="uppercase">{doc.file_type}</span>
-                                        {doc.file_size && <span>•</span>}
-                                        {doc.file_size && <span>{doc.file_size}</span>}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <Button size="sm" variant="outline" onClick={() => window.open(doc.file_url, '_blank')} disabled={!doc.file_url}>
-                                      View
-                                    </Button>
-                                  </div>
-                                </div>
-                              </Card>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
+            {/* Render the new robust change history component */}
+            <div className="mt-6">
+              <TenderChangeHistory
+                history={tenderHistory}
+                isLoading={isLoadingHistory}
+              />
+            </div>
           </div>
         </div>
       </div>

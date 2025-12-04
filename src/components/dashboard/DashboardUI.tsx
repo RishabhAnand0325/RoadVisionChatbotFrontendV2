@@ -153,19 +153,21 @@ export function DashboardUI({ data, onNavigate }: DashboardUIProps) {
       </div>
 
       {/* Today's Hearings Alert */}
-      <Card className="border-l-4 border-l-warning bg-warning/5 shadow-md">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <AlertCircle className="h-6 w-6 text-warning" />
-            <div>
-              <CardTitle className="text-lg">⚖️ Hearing Today - Action Required</CardTitle>
-              <CardDescription className="text-base">
-                Case ID <strong>38572/2025</strong> - Saket District Court at <strong>2:00 PM</strong>
-              </CardDescription>
+      {data.todayHearing && (
+        <Card className="border-l-4 border-l-warning bg-warning/5 shadow-md">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-6 w-6 text-warning" />
+              <div>
+                <CardTitle className="text-lg">⚖️ Hearing Today - Action Required</CardTitle>
+                <CardDescription className="text-base">
+                  Case ID <strong>{data.todayHearing.caseId}</strong> - {data.todayHearing.court} at <strong>{data.todayHearing.time}</strong>
+                </CardDescription>
+              </div>
             </div>
-          </div>
-        </CardHeader>
-      </Card>
+          </CardHeader>
+        </Card>
+      )}
     </div>
   );
 }

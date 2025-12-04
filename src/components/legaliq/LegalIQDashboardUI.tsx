@@ -9,6 +9,7 @@ import {
   Search,
   FileSearch,
 } from "lucide-react";
+import { BackButton } from "@/components/common/BackButton";
 
 interface SubModule {
   id: string;
@@ -36,6 +37,7 @@ export function LegalIQDashboardUI({ modules }: LegalIQDashboardUIProps) {
     <div className="space-y-8">
       {/* Header */}
       <div className="space-y-2">
+        <BackButton to="/" />
         <h1 className="text-4xl font-bold tracking-tight">LegalIQ</h1>
         <p className="text-lg text-muted-foreground">
           Your complete legal workflow management platform

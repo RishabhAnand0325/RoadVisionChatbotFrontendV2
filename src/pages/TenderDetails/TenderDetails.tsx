@@ -1,24 +1,23 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { fetchFullTenderDetails } from '@/lib/api/tenderiq.api';
+import { fetchFullTenderDetails, fetchTenderHistory } from '@/lib/api/tenderiq.api';
 import { TenderDetailsType } from '@/lib/types/tenderiq';
 import TenderDetailsUI from '@/components/tenderiq/TenderDetailsUI';
 import { Button } from '@/components/ui/button';
 import {
-  performTenderAction,
   fetchWishlistedTenders,
   fetchFavoriteTenders,
   fetchArchivedTenders,
 } from '@/lib/api/tenderiq';
-import { Tender, FullTenderDetails } from '@/lib/types/tenderiq.types';
+import { Tender, FullTenderDetails, TenderHistoryItem } from '@/lib/types/tenderiq.types';
+import { useTenderActions } from '@/hooks/useTenderActions';
 
 export default function TenderDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const { handleToggleWishlist, handleToggleFavorite, handleToggleArchive } = useTenderActions();
 
   const { data: tender, isLoading, isError } = useQuery<FullTenderDetails, Error>({
     queryKey: ['tenderDetails', id],
@@ -41,86 +40,51 @@ export default function TenderDetails() {
     queryFn: fetchArchivedTenders,
   });
 
+  // Fetch tender history/changes
+  const { data: tenderHistory, isLoading: isLoadingHistory, refetch: refetchHistory } = useQuery<TenderHistoryItem[], Error>({
+    queryKey: ['tenderHistory', id],
+    queryFn: () => fetchTenderHistory(id!),
+    enabled: !!id,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: true,
+  });
+
   const isWishlisted = wishlist?.some((item) => item.id === id) ?? false;
   const isFavorited = favorites?.some((item) => item.id === id) ?? false;
   const isArchived = archived?.some((item) => item.id === id) ?? false;
 
-  const handleAddToWishlist = async () => {
+  const handleAddToWishlist = () => {
     if (!tender) return;
-    try {
-      const wasWishlisted = isWishlisted;
-      const response = await performTenderAction(tender.id, { action: 'toggle_wishlist' });
-      
-      // Refetch queries to ensure UI shows updated wishlist & analysis status
-      // Use refetchQueries so we wait for the updated data to be available
-      await Promise.all([
-        queryClient.refetchQueries({ queryKey: ['wishlist'], exact: false }),
-        queryClient.refetchQueries({ queryKey: ['analysisQueue'], exact: false }),
-        queryClient.refetchQueries({ queryKey: ['tenders'], exact: false }),
-        queryClient.refetchQueries({ queryKey: ['tenderDetails', id], exact: false }),
-      ]);
-      
-      // Show enhanced toast based on queue status
-      if (!wasWishlisted) {
-        let description = 'Tender added to wishlist.';
-        
-        // Check if analysis already completed
-        if (response.analysis_completed) {
-          description += ' Analysis already completed.';
-        } else if (response.has_active_analysis && response.queue_position && response.queue_position > 0) {
-          // Queued behind another analysis
-          description += ` You're #${response.queue_position} in the analysis queue.`;
-        } else if (!response.analysis_completed) {
-          // Starting immediately (no queue position means it's starting now)
-          description += ' Analysis is starting now (est. 3-5 min)';
-        }
-        
-        toast({
-          title: '✓ Added to Wishlist',
-          description,
-          duration: 6000,
-        });
-      } else {
-        toast({
-          title: 'Removed from wishlist',
-          description: 'Tender removed successfully',
-        });
-      }
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to update wishlist', variant: 'destructive' });
-    }
+    // Fire and forget - update UI immediately, sync with backend in the background
+    handleToggleWishlist(tender.id, isWishlisted).catch(() => {
+      // Error is already handled by the hook with toast
+    });
   };
 
-  const handleToggleFavorite = async () => {
+  const handleToggleFavoriteAction = () => {
     if (!tender) return;
-    try {
-      await performTenderAction(tender.id, { action: 'toggle_favorite' });
-      toast({
-        title: isFavorited ? 'Removed from favorites' : 'Added to favorites',
-        description: 'Tender favorites updated successfully',
-      });
-      queryClient.invalidateQueries({ queryKey: ['favorites'] });
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to update favorites', variant: 'destructive' });
-    }
+    // Fire and forget - update UI immediately, sync with backend in the background
+    handleToggleFavorite(tender.id, isFavorited).catch(() => {
+      // Error is already handled by the hook with toast
+    });
   };
 
-  const handleToggleArchive = async () => {
+  const handleToggleArchiveAction = () => {
     if (!tender) return;
-    try {
-      await performTenderAction(tender.id, { action: 'toggle_archive' });
-      toast({
-        title: isArchived ? 'Removed from archive' : 'Tender archived',
-        description: 'Tender archive updated successfully',
-      });
-      queryClient.invalidateQueries({ queryKey: ['archived'] });
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to update archive', variant: 'destructive' });
-    }
+    // Fire and forget - update UI immediately, sync with backend in the background
+    handleToggleArchive(tender.id, isArchived).catch(() => {
+      // Error is already handled by the hook with toast
+    });
   };
   
   const handleNavigate = (path: string) => {
-    navigate(path);
+    // If navigating to analyze page, pass the current tender details URL as return path
+    if (path.includes('/analyze/')) {
+      navigate(path, { state: { returnPath: `/tenderiq/view/${id}` } });
+    } else {
+      navigate(path);
+    }
   };
 
   if (isLoading) {
@@ -153,12 +117,14 @@ export default function TenderDetails() {
   return (
     <TenderDetailsUI
       tender={tender}
+      tenderHistory={tenderHistory || []}
+      isLoadingHistory={isLoadingHistory}
       isWishlisted={isWishlisted}
       onAddToWishlist={handleAddToWishlist}
       isFavorited={isFavorited}
-      onToggleFavorite={handleToggleFavorite}
+      onToggleFavorite={handleToggleFavoriteAction}
       isArchived={isArchived}
-      onToggleArchive={handleToggleArchive}
+      onToggleArchive={handleToggleArchiveAction}
       onNavigate={handleNavigate}
     />
   );

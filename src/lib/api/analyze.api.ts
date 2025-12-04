@@ -6,6 +6,7 @@
 
 import { API_BASE_URL } from '@/lib/config/api';
 import { getAuthHeaders } from '@/lib/api/authHelper';
+import { apiRequest, apiRequestWithoutBody } from '@/lib/api/apiClient';
 import { TenderAnalysisResponse } from '@/lib/types/analyze.type';
 import { mockTenderAnalysis } from '../mock/analyze.mock';
 
@@ -32,25 +33,50 @@ const handleResponse = async (response: Response) => {
  */
 export const fetchTenderAnalysis = async (tenderId: string): Promise<TenderAnalysisResponse> => {
   console.log(`Fetching tender analysis for: ${tenderId}`);
-
+  // return mockTenderAnalysis
   const url = `${API_BASE_URL}/analyze/${tenderId}`;
 
   try {
-    const response = await fetch(url, {
+    const data = await apiRequest<TenderAnalysisResponse>(url, {
       headers: getAuthHeaders(),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API error response:', errorText);
-      throw new Error(`Failed to fetch analysis: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json() as TenderAnalysisResponse;
+    data.rfp_sections = data.rfp_sections || mockTenderAnalysis.rfp_sections;
+    data.data_sheet = data.data_sheet || mockTenderAnalysis.data_sheet;
     return data;
-
   } catch (error) {
-    console.error(`Error in fetchTenderAnalysis for tender ${tenderId}:`, error);
+    if (error instanceof Error) {
+      // 404 is an expected "no analysis yet" case; anything else we log
+      if (!error.message.includes('Analysis not found')) {
+        console.error(`Error in fetchTenderAnalysis for tender ${tenderId}:`, error);
+      }
+    }
+    throw error;
+  }
+};
+
+/**
+ * Trigger analysis for a tender
+ * POST /api/v1/analyze/trigger/{tenderId}
+ */
+export const triggerTenderAnalysis = async (
+  tenderId: string
+): Promise<{ status: string; message: string; analysis_id?: string }> => {
+  const url = `${API_BASE_URL}/analyze/trigger/${tenderId}`;
+
+  try {
+    const data = await apiRequest<{ status: string; message: string; analysis_id?: string }>(url, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    return (
+      data || {
+        status: 'success',
+        message: `Analysis triggered for tender ${tenderId}`,
+      }
+    );
+  } catch (error) {
+    console.error(`Error triggering analysis for tender ${tenderId}:`, error);
     throw error;
   }
 };
@@ -65,13 +91,9 @@ export const downloadAnalysisReport = async (tenderId: string, format: 'pdf' | '
   const url = `${API_BASE_URL}/analyze/report/download/${tenderId}?format=${format}`;
 
   try {
-    const response = await fetch(url, {
+    const response = await apiRequestWithoutBody(url, {
       headers: getAuthHeaders(),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to download analysis report');
-    }
 
     // Get filename from Content-Disposition header or construct default
     const contentDisposition = response.headers.get('Content-Disposition');
@@ -114,13 +136,9 @@ export const downloadTemplate = async (templateId: string, templateName: string)
   const url = `${API_BASE_URL}/analyze/templates/download/${templateId}`;
   
   try {
-    const response = await fetch(url, {
+    const response = await apiRequestWithoutBody(url, {
       headers: getAuthHeaders(),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to download template');
-    }
 
     // Get filename from Content-Disposition header or use default
     const contentDisposition = response.headers.get('Content-Disposition');
@@ -152,56 +170,3 @@ export const downloadTemplate = async (templateId: string, templateName: string)
     throw error;
   }
 };
-
-/**
- * Fetch analysis queue status
- * GET /api/v1/analyze/queue/status
- */
-export async function fetchAnalysisQueueStatus() {
-  const response = await fetch(`${API_BASE_URL}/analyze/queue/status`, {
-    headers: getAuthHeaders(),
-  });
-  
-  if (!response.ok) {
-    throw new Error('Failed to fetch queue status');
-  }
-  
-  return response.json();
-}
-
-/**
- * Get queue position for a specific tender
- * GET /api/v1/analyze/queue/position/{tenderId}
- */
-export async function fetchTenderQueuePosition(tenderId: string) {
-  const response = await fetch(`${API_BASE_URL}/analyze/queue/position/${tenderId}`, {
-    headers: getAuthHeaders(),
-  });
-  
-  if (!response.ok) {
-    throw new Error('Failed to fetch tender queue position');
-  }
-  
-  return response.json();
-}
-
-/**
- * Trigger analysis for a tender
- * POST /api/v1/analyze/trigger/{tenderId}
- * 
- * @param tenderId - Tender reference number (TDR)
- * @returns Analysis trigger response with status and queue info
- */
-export async function triggerTenderAnalysis(tenderId: string) {
-  const response = await fetch(`${API_BASE_URL}/analyze/trigger/${tenderId}`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to trigger analysis: ${errorText}`);
-  }
-  
-  return response.json();
-}

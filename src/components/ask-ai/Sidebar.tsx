@@ -57,66 +57,71 @@ export function Sidebar({
     <div
       className={cn(
         "flex flex-col border-r bg-card h-full transition-all duration-300 overflow-hidden",
-        isCollapsed ? "w-20" : "w-80"
+        isCollapsed ? "w-16" : "w-72"
       )}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
-        {!isCollapsed && <h2 className="font-semibold text-lg">Chats</h2>}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onToggleCollapse?.(!isCollapsed)}
-          className="h-8 w-8"
-          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {isCollapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <ChevronLeft className="h-4 w-4" />
+      {/* Header with Logo/Title and Controls */}
+      <div className="p-4 border-b flex-shrink-0">
+        <div className="flex items-center justify-between gap-2">
+          {!isCollapsed && (
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <span className="text-sm font-bold text-primary">C</span>
+              </div>
+              <h2 className="font-semibold text-base truncate">CEIGALL AI</h2>
+            </div>
           )}
-        </Button>
-        {!isCollapsed && (
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => {
-              if (isSearching) setSearchQuery("");
-              setIsSearching(!isSearching);
-            }}
-            className="h-8 w-8"
+            onClick={() => onToggleCollapse?.(!isCollapsed)}
+            className="h-8 w-8 flex-shrink-0"
+            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            {isSearching ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
+            {isCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
           </Button>
-        )}
+        </div>
       </div>
 
-      {/* Search Input */}
-      {!isCollapsed && isSearching && (
-        <div className="px-4 py-2 border-b flex-shrink-0">
-          <Input
-            type="text"
-            placeholder="Search chats..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-9"
-            autoFocus
-          />
-        </div>
-      )}
-
       {/* New Chat Button */}
-      <div className="p-4 border-b flex-shrink-0">
+      <div className="px-4 py-3 border-b flex-shrink-0">
         <Button
           onClick={onCreateChat}
-          className={cn("w-full", isCollapsed && "w-12 h-12 p-0")}
+          className={cn("w-full gap-2", isCollapsed && "w-10 h-10 p-0")}
           size={isCollapsed ? "icon" : "sm"}
           title={isCollapsed ? "New Chat" : undefined}
         >
-          <Plus className="h-4 w-4" />
-          {!isCollapsed && <span className="ml-2">New Chat</span>}
+          <Plus className="h-4 w-4 flex-shrink-0" />
+          {!isCollapsed && <span>New Chat</span>}
         </Button>
       </div>
+
+      {/* Search Input */}
+      {!isCollapsed && (
+        <div className="px-4 py-2 border-b flex-shrink-0">
+          <div className="relative">
+            <Input
+              type="text"
+              placeholder="Search chats..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-9 pr-9"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Chat History */}
       {!isCollapsed && (

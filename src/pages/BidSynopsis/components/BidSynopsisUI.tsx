@@ -6,9 +6,11 @@ import { Input } from '@/components/ui/input';
 import { SynopsisContent } from '@/lib/types/bidsynopsis.types';
 import { useReactToPrint } from 'react-to-print';
 import { useRef } from 'react';
+import { BackButton } from '@/components/common/BackButton';
 
 interface BidSynopsisUIProps {
   tenderTitle?: string;
+  tenderId?: string;
   synopsisContent: SynopsisContent;
   ceigallData: Record<number, string>;
   requirementData: Record<number, string>;
@@ -21,10 +23,12 @@ interface BidSynopsisUIProps {
   onSave: () => void;
   onExportPDF: () => void;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onAnalyzeTender?: () => void;
 }
 
 export default function BidSynopsisUI({
   tenderTitle,
+  tenderId,
   synopsisContent,
   ceigallData,
   requirementData,
@@ -37,6 +41,7 @@ export default function BidSynopsisUI({
   onSave,
   onExportPDF,
   onFileUpload,
+  onAnalyzeTender,
 }: BidSynopsisUIProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const reactToPrintFn = useReactToPrint({ contentRef })
@@ -44,6 +49,9 @@ export default function BidSynopsisUI({
   return (
     <div className="min-h-screen bg-background">
       <div className="p-8 space-y-6 max-w-[1600px] mx-auto">
+        {/* Back Button */}
+        <BackButton />
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -53,6 +61,12 @@ export default function BidSynopsisUI({
             </p>
           </div>
           <div className="flex gap-2">
+            {onAnalyzeTender && tenderId && (
+              <Button variant="outline" onClick={onAnalyzeTender}>
+                <FileText className="h-4 w-4 mr-2" />
+                Analyze Tender
+              </Button>
+            )}
             <Button variant="outline" onClick={reactToPrintFn}>
               <Download className="h-4 w-4 mr-2" />
               Export To PDF

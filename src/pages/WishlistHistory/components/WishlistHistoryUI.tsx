@@ -7,8 +7,9 @@ import { useEffect, useState } from "react";
 import WishlistReportPreview from "./WishlistReportPreview";
 import { useWishlistReportData } from "../hooks/useWishlistReportData";
 import { useWishlistReportExcel } from "../hooks/useWishlistReportExcel";
-import { useQuery } from "@tanstack/react-query";
-import { getHistoryWishlistData } from "@/lib/api/wishlist";
+import { BackButton } from "@/components/common/BackButton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { updateWishlistTenderResults } from "@/lib/api/wishlist";
 
 export function MetadataCard({ title, value, LucideIcon, description }: MetadataCardProps) {
   return (
@@ -25,13 +26,67 @@ export function MetadataCard({ title, value, LucideIcon, description }: Metadata
   )
 }
 
-export function TenderCard({ data, handleViewTender, handleRemoveFromWishlist }: { data: HistoryData, handleViewTender: (id: string) => void, handleRemoveFromWishlist: (id: string) => Promise<void> }) {
+// Helper to capitalize analysis state labels
+const capitalizeAnalysisState = (state: string): string => {
+  const stateMap: Record<string, string> = {
+    'completed': 'Completed',
+    'pending': 'Pending',
+    'parsing': 'Parsing',
+    'processing': 'Processing',
+    'analyzing': 'Analyzing',
+    'failed': 'Failed',
+  };
+  return stateMap[state] || state.charAt(0).toUpperCase() + state.slice(1);
+};
+
+export function TenderCard({ data, handleViewTender, handleRemoveFromWishlist, onUpdateResults }: { data: HistoryData, handleViewTender: (id: string) => void, handleRemoveFromWishlist: (id: string) => Promise<void>, onUpdateResults?: (id: string, results: 'won' | 'rejected' | 'incomplete' | 'pending') => Promise<void> }) {
+  const [isUpdatingResults, setIsUpdatingResults] = useState(false);
+
+  const handleResultsChange = async (newResults: string) => {
+    if (onUpdateResults && newResults !== data.results) {
+      setIsUpdatingResults(true);
+      try {
+        await onUpdateResults(data.id, newResults as 'won' | 'rejected' | 'incomplete' | 'pending');
+      } finally {
+        setIsUpdatingResults(false);
+      }
+    }
+  };
+
+  const getResultsColor = (results: string) => {
+    switch(results) {
+      case 'won':
+        return 'bg-green-100 text-green-800';
+      case 'rejected':
+        return 'bg-red-100 text-red-800';
+      case 'incomplete':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'pending':
+        return 'bg-blue-100 text-blue-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   return (
     <Card className="hover:shadow-lg transition-shadow">
       <CardContent className="p-6 flex flex-col gap-2">
-        <div className="flex justify-between items-center">
-          <h3>{data.title}</h3>
-          <span className="bg-muted rounded-xl px-2 py-1 text-xs font-bold">{data.analysis_state}</span>
+        <div className="flex justify-between items-center gap-4">
+          <h3 className="flex-1">{data.title}</h3>
+          <div className="flex gap-2 items-center">
+            <span className="bg-muted rounded-xl px-2 py-1 text-xs font-bold">{capitalizeAnalysisState(data.analysis_state)}</span>
+            <Select value={data.results} onValueChange={handleResultsChange} disabled={isUpdatingResults}>
+              <SelectTrigger className={`w-32 text-xs ${getResultsColor(data.results)}`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="won">Won</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="incomplete">Incomplete</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <div className="text-sm text-muted-foreground">{data.authority}</div>
         <hr className="my-2" />
@@ -53,7 +108,7 @@ export function TenderCard({ data, handleViewTender, handleRemoveFromWishlist }:
         <div className="w-full flex justify-between items-center">
           <div>Progress</div>
           <div className="flex gap-4 items-center">
-            <div className="flex gap-1 items-center">
+            {/* <div className="flex gap-1 items-center">
               <span className={`text-xs ${data.analysis_state == "completed" ? 'text-primary' : 'text-muted-foreground'}`}>Analysis</span>
               {data.analysis_state == "completed" ? <Check className="h-3 w-3 text-primary" /> : <Circle className="h-3 w-3 text-muted-foreground" />}
             </div>
@@ -64,7 +119,7 @@ export function TenderCard({ data, handleViewTender, handleRemoveFromWishlist }:
             <div className="flex gap-1 items-center">
               <span className={`text-xs ${data.evaluated_state ? 'text-primary' : 'text-muted-foreground'}`}>Evaluation</span>
               {data.evaluated_state ? <Check className="h-3 w-3 text-primary" /> : <Circle className="h-3 w-3 text-muted-foreground" />}
-            </div>
+            </div> */}
             <span className="text-xs">{data.progress} %</span>
           </div>
         </div>
@@ -93,82 +148,109 @@ export function TenderCard({ data, handleViewTender, handleRemoveFromWishlist }:
 }
 
 export default function WishlistHistoryUI({ navigate, data, handleViewTender, handleRemoveFromWishlist }: WishlistHistoryUIProps) {
-  const [filteredTenders, setFilteredTenders] = useState<HistoryData[]>(data.tenders);
+  const [metadata, setMetadata] = useState<MetadataCardProps[]>([])
+  const [filteredTenders, setFilteredTenders] = useState<HistoryData[]>([]);
+  const [uniqueTenders, setUniqueTenders] = useState<HistoryData[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isReportPreviewOpen, setIsReportPreviewOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  // Only refetch wishlist when there are tenders in pending/analyzing state
-  const hasActiveAnalysis = data.tenders.some(t => 
-    t.analysis_state === 'pending' || 
-    t.analysis_state === 'parsing' || 
-    t.analysis_state === 'analyzing'
-  );
-
-  const { data: liveWishlist } = useQuery({
-    queryKey: ['wishlist'],
-    queryFn: getHistoryWishlistData,
-    // Only poll if there's active analysis, otherwise disable
-    refetchInterval: hasActiveAnalysis ? 10000 : false, // Poll every 10 seconds only when needed
-    enabled: true,
-  });
-
-  // Use live data when available, fallback to initial data
-  const displayData = liveWishlist || data;
+  // Process data for report
   const reportData = useWishlistReportData(data);
   const { handleExportToExcel } = useWishlistReportExcel();
 
-  // Calculate metadata from display data
-  const tenders = displayData?.tenders || [];
-  
-  const totalSavedMetadata: MetadataCardProps = {
-    title: 'Total Saved',
-    value: tenders.length.toString(),
-    LucideIcon: Heart,
-    description: 'Active Opportunities',
-  }
-  const tendersAnalyzedMetadata: MetadataCardProps = {
-    title: 'Tenders Analyzed',
-    value: tenders.filter(tender => tender.analysis_state === 'completed').length.toString(),
-    LucideIcon: SquareCheck,
-    description: 'AI-powered insights',
-  }
-  const tendersWonMetadata: MetadataCardProps = {
-    title: 'Tenders Won',
-    value: tenders.filter(tender => tender.results === 'won').length.toString(),
-    LucideIcon: TrendingUp,
-    description: 'Successful bids',
-  }
-  
-  // Calculate total won value - convert from rupees to crores
-  const totalWonValue = tenders
-    .filter(tender => tender.results === 'won')
-    .reduce((total, tender) => total + (tender.value || 0), 0) / 10000000;
-  
-  const tendersWonValueMetadata: MetadataCardProps = {
-    title: 'Tenders Won Value',
-    value: `₹${totalWonValue.toFixed(2)} Cr`,
-    LucideIcon: IndianRupee,
-    description: 'Total value won',
-  }
-  const pendingTendersMetadata: MetadataCardProps = {
-    title: 'Pending Tenders',
-    value: tenders.filter(tender => tender.results === 'pending').length.toString(),
-    LucideIcon: Clock,
-    description: 'Awaiting results',
-  }
-
-  const metadata = [totalSavedMetadata, tendersAnalyzedMetadata, tendersWonMetadata, tendersWonValueMetadata, pendingTendersMetadata];
-
-  // Update filtered tenders when display data changes
-  useEffect(() => {
-    if (displayData?.tenders) {
-      const filtered = displayData.tenders.filter((tender) => 
-        tender.title.toLowerCase().includes(searchQuery.toLowerCase())
+  const handleUpdateResults = async (tenderId: string, results: 'won' | 'rejected' | 'incomplete' | 'pending') => {
+    try {
+      await updateWishlistTenderResults(tenderId, results);
+      // Update local state to reflect the change
+      setUniqueTenders(prev => 
+        prev.map(tender => 
+          tender.id === tenderId ? { ...tender, results } : tender
+        )
       );
-      setFilteredTenders(filtered);
+    } catch (error) {
+      console.error('Failed to update tender results:', error);
+      alert('Failed to update tender results. Please try again.');
     }
-  }, [searchQuery, displayData]);
+  };
+
+  // Deduplicate tenders on data change
+  useEffect(() => {
+    // Deduplicate tenders using multiple strategies to catch all duplicates
+    const uniqueTendersMap = new Map<string, HistoryData>();
+    const seenIds = new Set<string>();
+    
+    data.tenders.forEach(tender => {
+      // Strategy 1: Use tender ID (most reliable)
+      if (tender.id && !seenIds.has(tender.id)) {
+        seenIds.add(tender.id);
+        uniqueTendersMap.set(tender.id, tender);
+        return;
+      }
+      
+      // Strategy 2: Use tender_id_str from full_scraped_details
+      const tenderIdStr = tender.full_scraped_details?.tender_id_str;
+      if (tenderIdStr && !uniqueTendersMap.has(`ref_${tenderIdStr}`)) {
+        uniqueTendersMap.set(`ref_${tenderIdStr}`, tender);
+        return;
+      }
+      
+      // Strategy 3: Use combination of title + authority (fallback for edge cases)
+      const titleAuthKey = `${tender.title}_${tender.authority}`.toLowerCase();
+      if (!uniqueTendersMap.has(`title_${titleAuthKey}`)) {
+        uniqueTendersMap.set(`title_${titleAuthKey}`, tender);
+      }
+    });
+    
+    const uniqueList = Array.from(uniqueTendersMap.values());
+    setUniqueTenders(uniqueList);
+  }, [data.tenders]);
+
+  // Filter unique tenders based on search query
+  useEffect(() => {
+    const filtered = uniqueTenders.filter((tender) => 
+      tender.title.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    setFilteredTenders(filtered);
+  }, [searchQuery, uniqueTenders]);
+
+  useEffect(() => {
+    // Use uniqueTenders for metadata calculations to avoid counting duplicates
+    const tendersToUse = uniqueTenders.length > 0 ? uniqueTenders : data.tenders;
+    
+    const totalSavedMetadata: MetadataCardProps = {
+      title: 'Total Saved',
+      value: tendersToUse.length.toString(),
+      LucideIcon: Heart,
+      description: 'Active Opportunities',
+    }
+    const tendersAnalyzedMetadata: MetadataCardProps = {
+      title: 'Tenders Analyzed',
+      value: tendersToUse.filter(tender => tender.analysis_state === 'completed').length.toString(),
+      LucideIcon: SquareCheck,
+      description: 'AI-powered insights',
+    }
+    const tendersWonMetadata: MetadataCardProps = {
+      title: 'Tenders Won',
+      value: tendersToUse.filter(tender => tender.results === 'won').length.toString(),
+      LucideIcon: TrendingUp,
+      description: 'Successful bids',
+    }
+    const tendersWonValueMetadata: MetadataCardProps = {
+      title: 'Tenders Won Value',
+      value: "Rs." + tendersToUse.filter(tender => tender.results === 'won').reduce((total, tender) => total + tender.value, 0).toLocaleString('en-IN') + "Cr",
+      LucideIcon: IndianRupee,
+      description: 'Total value won',
+    }
+    const pendingTendersMetadata: MetadataCardProps = {
+      title: 'Pending Tenders',
+      value: tendersToUse.filter(tender => tender.results === 'pending').length.toString(),
+      LucideIcon: Clock,
+      description: 'Awaiting results',
+    }
+
+    setMetadata([totalSavedMetadata, tendersAnalyzedMetadata, tendersWonMetadata, tendersWonValueMetadata, pendingTendersMetadata])
+  }, [uniqueTenders, data.tenders])
 
   const handleOpenReportPreview = () => {
     setIsReportPreviewOpen(true);
@@ -195,10 +277,7 @@ export default function WishlistHistoryUI({ navigate, data, handleViewTender, ha
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/tenderiq')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
+          <BackButton to="/tenderiq" />
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
               <Heart className="h-6 w-6 text-primary-foreground" />
@@ -247,15 +326,15 @@ export default function WishlistHistoryUI({ navigate, data, handleViewTender, ha
           onChange={(e) => setSearchQuery(e.target.value)}
           className="border rounded-lg px-4 py-2 w-full"
         />
-        <Button variant="default" size="sm">
+        {/* <Button variant="default" size="sm">
           <Filter className="h-4 w-4 mr-2" />
           Filter
-        </Button>
+        </Button> */}
       </div>
 
       {/* Wishlist Content */}
       <div className="space-y-4">
-        {data.tenders.length === 0 ? (
+        {uniqueTenders.length === 0 ? (
           <Card className="p-12 text-center">
             <Heart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">No tenders in your wishlist yet.</p>
@@ -274,6 +353,7 @@ export default function WishlistHistoryUI({ navigate, data, handleViewTender, ha
                 data={item}
                 handleViewTender={handleViewTender}
                 handleRemoveFromWishlist={handleRemoveFromWishlist}
+                onUpdateResults={handleUpdateResults}
               />
             ))}
           </div>

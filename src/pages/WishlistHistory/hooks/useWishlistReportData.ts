@@ -13,7 +13,7 @@ export function useWishlistReportData(data: HistoryPageResponse): WishlistReport
     // Calculate metrics
     const metrics: ReportMetrics = {
       totalSaved: tenders.length,
-      totalAnalyzed: tenders.filter(t => t.analysis_state === true || t.analysis_state === 'true').length,
+      totalAnalyzed: tenders.filter(t => t.analysis_state === 'completed' || t.analysis_state === 'completed').length,
       totalWon: tenders.filter(t => t.results === 'won').length,
       totalRejected: tenders.filter(t => t.results === 'rejected').length,
       totalIncomplete: tenders.filter(t => t.results === 'incomplete').length,
@@ -70,11 +70,14 @@ function getStatusLabel(results: string): string {
  * Convert analysis state to human-readable label
  */
 function getAnalysisStateLabel(state: string | boolean): string {
-  if (state === true || state === 'true') {
-    return 'Analyzed';
+  if (state === 'completed' || state === true || state === 'true') {
+    return 'Completed';
   }
-  if (state === false || state === 'false') {
-    return 'Not Analyzed';
+  if (state === 'pending' || state === 'parsing' || state === 'processing' || state === 'analyzing') {
+    return 'In Progress';
   }
-  return 'Unknown';
+  if (state === 'failed' || state === false || state === 'false') {
+    return 'Failed';
+  }
+  return 'Not Started';
 }

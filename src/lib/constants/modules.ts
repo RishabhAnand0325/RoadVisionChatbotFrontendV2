@@ -32,15 +32,7 @@ export const PLATFORM_MODULES: PlatformModule[] = [
     accessLevel: 'universal',
     color: 'text-green-500',
   },
-  {
-    id: 'legaliq',
-    name: 'LegalIQ',
-    description: 'AI-powered legal and contract intelligence',
-    icon: 'Scale',
-    route: '/legaliq',
-    accessLevel: 'universal',
-    color: 'text-purple-500',
-  },
+
   {
     id: 'dmsiq',
     name: 'DMSIQ',

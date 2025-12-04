@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { DocumentAnalysisResult } from "@/lib/types/analyze-document";
+import { BackButton } from "@/components/common/BackButton";
 
 interface AnalyzeDocumentUIProps {
   isAnalyzing: boolean;
@@ -29,7 +30,8 @@ export function AnalyzeDocumentUI({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Analyze Document</h1>
+          <BackButton to="/legaliq" />
+          <h1 className="text-3xl font-bold text-foreground mt-2">Analyze Document</h1>
           <p className="text-muted-foreground mt-1">Upload legal documents for AI-powered analysis</p>
         </div>
         {isAnalyzed && (

@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '@/lib/config/api';
 import { getAuthHeaders } from '@/lib/api/authHelper';
+import { apiRequest, apiRequestWithoutBody } from '@/lib/api/apiClient';
 import { Document, Tender, TenderDetailsType, TenderDocument, ScrapedTenderFile, ScrapedTender, TenderApiResponse, AvailableDate, FilteredTendersResponse, TenderActionRequest, TenderAnalysisResult } from '@/lib/types/tenderiq';
 import { FullTenderDetails } from '../types/tenderiq.types';
 
@@ -21,6 +22,7 @@ const transformTender = (apiTender: ScrapedTender, category: string): Tender => 
     location: apiTender.city || apiTender.state || 'N/A',
     progressPct: 0,
     documents: [], // Not in ScrapedTender
+    publish_date: apiTender.publish_date, // Ensure this is passed through
   };
 };
 
@@ -71,17 +73,10 @@ export const fetchDailyTenders = async (): Promise<Tender[]> => {
 
   try {
     // Call /tenders without parameters - returns tenders for latest scraped date
-    const response = await fetch(`${API_BASE_URL}/tenderiq/tenders`, {
-      headers: getAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API error response:', errorText);
-      throw new Error(`Failed to fetch daily tenders: ${response.status} ${errorText}`);
-    }
-
-    const data: TenderApiResponse = await response.json();
+    const data: TenderApiResponse = await apiRequest<TenderApiResponse>(
+      `${API_BASE_URL}/tenderiq/tenders`,
+      { headers: getAuthHeaders() }
+    );
     console.log('Daily tenders API response:', data);
 
     // Store the latest scraped date from response
@@ -128,17 +123,10 @@ export const fetchAvailableDates = async (): Promise<AvailableDate[]> => {
   console.log('Fetching available dates from:', `${API_BASE_URL}/tenderiq/dates`);
 
   try {
-    const response = await fetch(`${API_BASE_URL}/tenderiq/dates`, {
-      headers: getAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API error response:', errorText);
-      throw new Error(`Failed to fetch available dates: ${response.status} ${errorText}`);
-    }
-
-    const data = await response.json();
+    const data = await apiRequest<{ dates: AvailableDate[] }>(
+      `${API_BASE_URL}/tenderiq/dates`,
+      { headers: getAuthHeaders() }
+    );
     console.log('Available dates response:', data);
 
     return data.dates || [];
@@ -177,17 +165,9 @@ export const fetchFilteredTenders = async (params: {
   console.log('Fetching filtered tenders from:', url);
 
   try {
-    const response = await fetch(url, {
+    const data: TenderApiResponse = await apiRequest<TenderApiResponse>(url, {
       headers: getAuthHeaders(),
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API error response:', errorText);
-      throw new Error(`Failed to fetch filtered tenders: ${response.status} ${errorText}`);
-    }
-
-    const data: TenderApiResponse = await response.json();
     console.log('Filtered tenders API response:', data);
 
     // Extract and transform all tenders from queries (same format as dailytenders)
@@ -228,17 +208,9 @@ export const fetchTenderById = async (id: string): Promise<TenderDetailsType> =>
   const url = `${API_BASE_URL}/tenderiq/tenders/${id}`;
 
   try {
-    const response = await fetch(url, {
+    const data: ScrapedTender = await apiRequest<ScrapedTender>(url, {
       headers: getAuthHeaders(),
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API error response:', errorText);
-      throw new Error(`Failed to fetch tender details: ${response.status} ${errorText}`);
-    }
-
-    const data: ScrapedTender = await response.json();
     console.log('Tender details API response:', data);
     
     // Transform the backend response to the frontend TenderDetailsType
@@ -291,11 +263,9 @@ export const fetchWishlistedTenders = async (): Promise<Tender[]> => {
   const url = `${API_BASE_URL}/tenderiq/wishlist`;
   console.log('Fetching wishlisted tenders from:', url);
   try {
-    const response = await fetch(url, { headers: getAuthHeaders() });
-    if (!response.ok) {
-      throw new Error('Failed to fetch wishlisted tenders');
-    }
-    const data: ScrapedTender[] = await response.json();
+    const data: ScrapedTender[] = await apiRequest<ScrapedTender[]>(url, { 
+      headers: getAuthHeaders() 
+    });
     return data.map(tender => transformTender(tender, tender.query_name || 'Uncategorized'));
   } catch (error) {
     console.error('Error fetching wishlisted tenders:', error);
@@ -311,11 +281,9 @@ export const fetchArchivedTenders = async (): Promise<Tender[]> => {
   const url = `${API_BASE_URL}/tenderiq/archived`;
   console.log('Fetching archived tenders from:', url);
   try {
-    const response = await fetch(url, { headers: getAuthHeaders() });
-    if (!response.ok) {
-      throw new Error('Failed to fetch archived tenders');
-    }
-    const data: ScrapedTender[] = await response.json();
+    const data: ScrapedTender[] = await apiRequest<ScrapedTender[]>(url, { 
+      headers: getAuthHeaders() 
+    });
     return data.map(tender => transformTender(tender, tender.query_name || 'Uncategorized'));
   } catch (error) {
     console.error('Error fetching archived tenders:', error);
@@ -331,11 +299,9 @@ export const fetchFavoriteTenders = async (): Promise<Tender[]> => {
   const url = `${API_BASE_URL}/tenderiq/favourite`;
   console.log('Fetching favorite tenders from:', url);
   try {
-    const response = await fetch(url, { headers: getAuthHeaders() });
-    if (!response.ok) {
-      throw new Error('Failed to fetch favorite tenders');
-    }
-    const data: ScrapedTender[] = await response.json();
+    const data: ScrapedTender[] = await apiRequest<ScrapedTender[]>(url, { 
+      headers: getAuthHeaders() 
+    });
     return data.map(tender => transformTender(tender, tender.query_name || 'Uncategorized'));
   } catch (error) {
     console.error('Error fetching favorite tenders:', error);
@@ -347,17 +313,16 @@ export const fetchFavoriteTenders = async (): Promise<Tender[]> => {
  * Perform an action on a tender (e.g., wishlist, archive).
  * @param tenderId The ID of the tender.
  * @param action The action to perform.
- * @returns Action response with analysis info if triggered.
  */
 export const performTenderAction = async (
   tenderId: string,
   action: TenderActionRequest
-): Promise<any> => {
+): Promise<void> => {
   const url = `${API_BASE_URL}/tenderiq/tenders/${tenderId}/actions`;
   console.log(`Performing action on tender ${tenderId}:`, action);
 
   try {
-    const response = await fetch(url, {
+    await apiRequestWithoutBody(url, {
       method: 'POST',
       headers: {
         ...getAuthHeaders(),
@@ -365,15 +330,8 @@ export const performTenderAction = async (
       },
       body: JSON.stringify(action),
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to perform action on tender: ${response.status} ${errorText}`);
-    }
     
-    const data = await response.json();
-    console.log(`Action ${action.action} on tender ${tenderId} successful.`, data);
-    return data;
+    console.log(`Action ${action.action} on tender ${tenderId} successful.`);
   } catch (error) {
     console.error(`Error in performTenderAction for tender ${tenderId}:`, error);
     throw error;
@@ -389,12 +347,9 @@ export const fetchTenderAnalysis = async (tenderId: string): Promise<TenderAnaly
   const url = `${API_BASE_URL}/tenderiq/analyze/${tenderId}`;
   console.log(`Fetching analysis for tender ${tenderId} from:`, url);
   try {
-    const response = await fetch(url, { headers: getAuthHeaders() });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to fetch tender analysis: ${response.status} ${errorText}`);
-    }
-    const data: TenderAnalysisResult = await response.json();
+    const data: TenderAnalysisResult = await apiRequest<TenderAnalysisResult>(url, { 
+      headers: getAuthHeaders() 
+    });
     console.log(`Analysis for tender ${tenderId} successful:`, data);
     return data;
   } catch (error) {
@@ -410,12 +365,9 @@ export const fetchFullTenderDetails = async (tenderId: string): Promise<FullTend
   const url = `${API_BASE_URL}/tenderiq/tenders/${tenderId}/full`;
   console.log(`Fetching analysis for tender ${tenderId} from:`, url);
   try {
-    const response = await fetch(url, { headers: getAuthHeaders() });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to fetch tender analysis: ${response.status} ${errorText}`);
-    }
-    const data = await response.json() as FullTenderDetails;
+    const data = await apiRequest<FullTenderDetails>(url, { 
+      headers: getAuthHeaders() 
+    });
     console.log(`Analysis for tender ${tenderId} successful:`, data);
     return data;
   } catch (error) {

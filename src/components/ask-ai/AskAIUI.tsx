@@ -274,7 +274,7 @@ export function AskAIUI({
               <Upload className="h-4 w-4" />
             </Button>
             <Input
-              placeholder="Ask LegalAI anything..."
+              placeholder="Ask Ceigall AI anything..."
               value={input}
               onChange={(e) => onInputChange(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && onSend()}

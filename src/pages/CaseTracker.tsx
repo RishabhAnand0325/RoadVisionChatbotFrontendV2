@@ -4,9 +4,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Select, 
-  SelectContent, 
+import { BackButton } from "@/components/common/BackButton";
+import {
+  Select,
+  SelectContent,
   SelectItem, 
   SelectTrigger, 
   SelectValue 
@@ -231,7 +232,8 @@ export default function CaseTracker() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Case Tracker</h1>
+          <BackButton to="/ceigalliq" />
+          <h1 className="text-3xl font-bold text-foreground mb-2 mt-2">Case Tracker</h1>
           <p className="text-muted-foreground">
             Comprehensive case management and hearing tracking
           </p>

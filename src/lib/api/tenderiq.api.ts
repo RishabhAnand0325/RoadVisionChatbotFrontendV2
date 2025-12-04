@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "../config/api";
-import { FullTenderDetails, Report, ScrapeDateResponse, Tender, TenderActionRequest } from "../types/tenderiq.types";
+import { FullTenderDetails, Report, ScrapeDateResponse, Tender, TenderActionRequest, TenderHistoryItem } from "../types/tenderiq.types";
 import { getCurrencyNumberFromText } from "../utils/conversions";
 import { getAuthHeaders } from "./authHelper";
 
@@ -27,12 +27,11 @@ export const fetchWishlistedTenders = async (): Promise<Tender[]> => {
  * Perform an action on a tender (e.g., wishlist, archive).
  * @param tenderId The ID of the tender.
  * @param action The action to perform.
- * @returns Action response with analysis info if triggered.
  */
 export const performTenderAction = async (
   tenderId: string,
   action: TenderActionRequest
-): Promise<any> => {
+): Promise<void> => {
   const url = `${API_BASE_URL}/tenderiq/tenders/${tenderId}/actions`;
   console.log(`Performing action on tender ${tenderId}:`, action);
 
@@ -51,9 +50,7 @@ export const performTenderAction = async (
       throw new Error(`Failed to perform action on tender: ${response.status} ${errorText}`);
     }
     
-    const data = await response.json();
-    console.log(`Action ${action.action} on tender ${tenderId} successful.`, data);
-    return data;
+    console.log(`Action ${action.action} on tender ${tenderId} successful.`);
   } catch (error) {
     console.error(`Error in performTenderAction for tender ${tenderId}:`, error);
     throw error;
@@ -124,5 +121,27 @@ export async function getTodayTenders(): Promise<Report | undefined> {
   } catch (error) {
     console.error('Error fetching tenders:', error)
     return undefined
+  }
+}
+
+/**
+ * Fetch tender change history (corrigendums and amendments)
+ */
+export const fetchTenderHistory = async (tenderId: string): Promise<TenderHistoryItem[]> => {
+  const url = `${API_BASE_URL}/tenderiq/corrigendum/${tenderId}/history`;
+  console.log(`Fetching tender history for ${tenderId} from:`, url);
+  try {
+    const response = await fetch(url, { headers: getAuthHeaders() });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to fetch tender history: ${response.status} ${errorText}`);
+    }
+    const data = await response.json() as TenderHistoryItem[];
+    console.log(`Tender history for ${tenderId} successful:`, data);
+    return data;
+  } catch (error) {
+    console.error(`Error in fetchTenderHistory for tender ${tenderId}:`, error);
+    // Return empty array instead of throwing to prevent UI crashes
+    return [];
   }
 }

@@ -10,6 +10,7 @@ import { TemplateCard } from "@/components/drafting/TemplateCard";
 import { DynamicForm } from "@/components/drafting/DynamicForm";
 import { Textarea } from "@/components/ui/textarea";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { BackButton } from "@/components/common/BackButton";
 
 
 export default function DocumentDrafting() {
@@ -83,7 +84,8 @@ export default function DocumentDrafting() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Document Drafting & Generation</h1>
+            <BackButton to="/ceigalliq" />
+            <h1 className="text-3xl font-bold text-foreground mb-2 mt-2">Document Drafting & Generation</h1>
             <p className="text-muted-foreground">
               Select a template to start creating AI-powered legal documents
             </p>
@@ -128,10 +130,7 @@ export default function DocumentDrafting() {
           </BreadcrumbList>
         </Breadcrumb>
         <div className="flex gap-2">
-          <Button onClick={handleBackToGallery} variant="outline" className="gap-2">
-            <ChevronLeft className="h-4 w-4" />
-            Back
-          </Button>
+          <BackButton onClick={handleBackToGallery} variant="outline" />
           <Button onClick={handleAskAI} variant="outline" className="gap-2">
             <Bot className="h-4 w-4" />
             Ask AI for Help

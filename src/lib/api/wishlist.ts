@@ -1,6 +1,8 @@
 import { API_BASE_URL } from "../config/api";
 import { mockHistoryPageResponse } from "../mock/wishlist";
 import { HistoryPageResponse, WishlistReportData } from "../types/wishlist";
+import { getAuthHeaders } from "./authHelper";
+import { apiRequest, apiRequestWithoutBody } from "./apiClient";
 
 {/*
 Endpoint: {api_root}/tenderiq/history-wishlist
@@ -32,16 +34,38 @@ Response: JSON
 export async function getHistoryWishlistData(): Promise<HistoryPageResponse> {
   // return mockHistoryPageResponse;
   try {
-    const response = await fetch(`${API_BASE_URL}/tenderiq/history-wishlist`)
-    if (!response.ok) {
-      throw new Error('Failed to fetch wishlisted tenders');
-    }
-    const data = await response.json() as HistoryPageResponse;
+    const data = await apiRequest<HistoryPageResponse>(
+      `${API_BASE_URL}/tenderiq/history-wishlist`, 
+      { headers: getAuthHeaders() }
+    );
     console.log(data)
     return data;
   } catch (error) {
     console.error(error)
     return mockHistoryPageResponse;
+  }
+}
+
+/**
+ * Update the results status of a wishlisted tender
+ * @param wishlistId - The ID of the wishlist entry
+ * @param results - The new results status (won, rejected, incomplete, pending)
+ */
+export async function updateWishlistTenderResults(
+  wishlistId: string, 
+  results: 'won' | 'rejected' | 'incomplete' | 'pending'
+): Promise<void> {
+  try {
+    await apiRequestWithoutBody(
+      `${API_BASE_URL}/tenderiq/wishlist/${wishlistId}/results/${results}`,
+      {
+        method: 'PATCH',
+        headers: getAuthHeaders()
+      }
+    );
+  } catch (error) {
+    console.error('Error updating wishlist tender results:', error);
+    throw error;
   }
 }
 

@@ -25,8 +25,15 @@ export interface SummaryWidget {
   progress: number;
 }
 
+export interface TodayHearing {
+  caseId: string;
+  court: string;
+  time: string;
+}
+
 export interface DashboardData {
   quickModules: QuickModule[];
   upcomingReminders: UpcomingReminder[];
   summaryWidgets: SummaryWidget[];
+  todayHearing?: TodayHearing;
 }

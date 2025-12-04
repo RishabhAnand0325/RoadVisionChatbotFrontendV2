@@ -63,7 +63,6 @@ export interface TenderApiResponse {
   queries: {
     id: string;
     query_name: string;
-    number_of_tenders: string;
     tenders: {
       id: string;
       tender_id_str: string;
@@ -196,4 +195,21 @@ export interface TenderAnalysisResult {
   one_pager_json: AnalysisOnePager | null;
   scope_of_work_json: any | null; // Type can be refined later if structure is known
   data_sheet_json: any | null; // Type can be refined later if structure is known
+}
+
+export interface Tender {
+  id: string;
+  title: string;
+  authority: string;
+  value: number | null;
+  dueDate: string;
+  status: string;
+  category: string;
+  ePublishedDate: string;
+  publish_date?: string | null; // Added for filtering
+  bidSecurity: number;
+  emd: number;
+  location: string;
+  progressPct: number;
+  documents: any[];
 }

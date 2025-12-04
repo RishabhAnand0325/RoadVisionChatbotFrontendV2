@@ -1,8 +1,47 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Tender } from '@/lib/types/tenderiq';
+import { parse, isAfter, isSameDay, subDays, startOfDay, isValid } from 'date-fns';
 import { fetchDailyTenders, fetchFilteredTenders } from '@/lib/api/tenderiq';
 import { useToast } from '@/hooks/use-toast';
+import { Tender } from '@/lib/types/tenderiq';
+
+/**
+ * Helper function to parse DD-MM-YYYY date format safely
+ * @param dateStr - Date string in DD-MM-YYYY format
+ * @returns Parsed Date object or null if invalid
+ */
+const parseDateSafely = (dateStr: string): Date | null => {
+  if (!dateStr || typeof dateStr !== 'string') return null;
+  try {
+    const trimmed = dateStr.trim();
+    // Parse DD-MM-YYYY format
+    const parsed = parse(trimmed, 'dd-MM-yyyy', new Date());
+    return isValid(parsed) ? parsed : null;
+  } catch (e) {
+    console.warn(`Failed to parse date: ${dateStr}`, e);
+    return null;
+  }
+};
+
+/**
+ * Sort tenders by publish_date in descending order (newest first)
+ * @param tenders - Array of tenders to sort
+ * @returns Sorted array
+ */
+const sortTendersByPublishDate = (tenders: Tender[]): Tender[] => {
+  return [...tenders].sort((a, b) => {
+    const dateA = parseDateSafely(a.publish_date || '');
+    const dateB = parseDateSafely(b.publish_date || '');
+    
+    // Handle invalid dates - push them to the end
+    if (!dateA && !dateB) return 0;
+    if (!dateA) return 1;
+    if (!dateB) return -1;
+    
+    // Sort descending (newest first)
+    return dateB.getTime() - dateA.getTime();
+  });
+};
 
 interface UseLiveFiltersParams {
   selectedDate?: string;
@@ -75,14 +114,70 @@ export const useLiveFilters = (params: UseLiveFiltersParams): UseLiveFiltersResu
     enabled: !hasDateOrFilters,
   });
 
-  // Update tenders based on which query succeeded
+  // Update tenders based on which query succeeded, with client-side filtering
   useEffect(() => {
+    let rawTenders: Tender[] = [];
     if (filteredData) {
-      setTenders(filteredData);
+      rawTenders = filteredData;
     } else if (dailyData) {
-      setTenders(dailyData);
+      rawTenders = dailyData;
     }
-  }, [filteredData, dailyData]);
+
+    // Apply client-side filtering for date ranges
+    // This ensures that even if the backend returns older tenders in the "latest" scrape runs,
+    // we only show what the user actually asked for.
+    let processedTenders = rawTenders;
+    
+    if (params.selectedDate && rawTenders.length > 0) {
+      // Filter by specific date
+      try {
+        const selectedParsed = parseDateSafely(params.selectedDate);
+        if (selectedParsed) {
+          const filtered = rawTenders.filter(tender => {
+            if (!tender.publish_date) return false;
+            const parsedDate = parseDateSafely(tender.publish_date);
+            return parsedDate && isSameDay(parsedDate, selectedParsed);
+          });
+          processedTenders = filtered;
+        }
+      } catch (e) {
+        console.error("Error filtering tenders by specific date:", e);
+        processedTenders = rawTenders;
+      }
+    } else if (params.selectedDateRange && rawTenders.length > 0) {
+      // Filter by date range (last X days)
+      try {
+        const now = new Date();
+        let daysToSubtract = 0;
+        
+        if (params.selectedDateRange === "last_2_days") daysToSubtract = 2;
+        else if (params.selectedDateRange === "last_5_days") daysToSubtract = 5;
+        else if (params.selectedDateRange === "last_7_days") daysToSubtract = 7;
+        else if (params.selectedDateRange === "last_30_days") daysToSubtract = 30;
+        
+        if (daysToSubtract > 0) {
+          // Calculate cutoff: today minus X days (inclusive)
+          const cutoffDate = subDays(startOfDay(now), daysToSubtract - 1);
+          
+          const filtered = rawTenders.filter(tender => {
+            if (!tender.publish_date) return false;
+            const parsedDate = parseDateSafely(tender.publish_date);
+            if (!parsedDate) return false;
+            // Include tender if it's on or after the cutoff date
+            return isAfter(parsedDate, cutoffDate) || isSameDay(parsedDate, cutoffDate);
+          });
+          processedTenders = filtered;
+        }
+      } catch (e) {
+        console.error("Error filtering tenders by date range:", e);
+        processedTenders = rawTenders;
+      }
+    }
+    
+    // Sort tenders by publish_date descending (newest first) for consistent ordering
+    const sortedTenders = sortTendersByPublishDate(processedTenders);
+    setTenders(sortedTenders);
+  }, [filteredData, dailyData, params.selectedDateRange]);
 
   // Handle errors
   useEffect(() => {

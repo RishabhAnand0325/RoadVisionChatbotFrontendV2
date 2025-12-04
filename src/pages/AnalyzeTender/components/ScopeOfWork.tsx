@@ -7,11 +7,10 @@ interface ScopeOfWorkProps {
 }
 
 export default function ScopeOfWork({ scopeOfWork }: ScopeOfWorkProps) {
-  // Handle null or empty scope of work
   if (!scopeOfWork) {
     return (
       <div className="flex items-center justify-center p-12">
-        <p className="text-muted-foreground">Scope of work data is not available yet.</p>
+        <p className="text-muted-foreground">Scope of Work information is not available yet.</p>
       </div>
     );
   }

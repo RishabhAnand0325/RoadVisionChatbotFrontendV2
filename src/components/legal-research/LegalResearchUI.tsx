@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Search, BookmarkPlus, ExternalLink, BookOpen } from "lucide-react";
 import { SearchResult } from "@/lib/types/legal-research";
+import { BackButton } from "@/components/common/BackButton";
 
 interface LegalResearchUIProps {
   searchQuery: string;
@@ -25,7 +26,8 @@ export function LegalResearchUI({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground mb-2">Legal Research</h1>
+        <BackButton to="/legaliq" />
+        <h1 className="text-3xl font-bold text-foreground mb-2 mt-2">Legal Research</h1>
         <p className="text-muted-foreground">
           Search judgments, acts, and case laws with AI-powered relevance ranking
         </p>

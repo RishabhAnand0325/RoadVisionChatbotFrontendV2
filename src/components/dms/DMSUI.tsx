@@ -519,14 +519,6 @@ export function DMSUI({ summary, documents, folders, categories, currentFolder, 
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center gap-3 p-4 border-b bg-card">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/")}
-            className="h-9 w-9"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
           {!sidebarOpen && (
             <Button
               variant="ghost"
@@ -537,12 +529,7 @@ export function DMSUI({ summary, documents, folders, categories, currentFolder, 
               <ChevronRight className="h-4 w-4" />
             </Button>
           )}
-          <div className="flex-1">
-            <h1 className="text-xl font-semibold">DMSIQ - Document Library</h1>
-            <p className="text-sm text-muted-foreground">
-              AI-powered intelligent document management
-            </p>
-          </div>
+          <div className="flex-1" />
           <Button className="gap-2" onClick={() => setUploadDialog(true)}>
             <Upload className="h-4 w-4" />
             Upload Document

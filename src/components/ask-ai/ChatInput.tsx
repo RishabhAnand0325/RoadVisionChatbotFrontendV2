@@ -80,7 +80,7 @@ export function ChatInput({
           value={inputMessage}
           onChange={(e) => setInputMessage(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask LegalAI anything..."
+          placeholder="Ask Ceigall AI anything..."
           className="w-full focus:outline-none resize-none overflow-hidden bg-transparent text-foreground placeholder:text-muted-foreground"
           disabled={disabled}
           rows={1}

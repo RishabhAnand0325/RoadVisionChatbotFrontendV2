@@ -1,6 +1,5 @@
-import { Search, Bell, User, Menu } from "lucide-react";
+import { Search, User, Menu } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -13,26 +12,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { logoutSuccess } from "@/lib/redux/authSlice";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 export function TopNav() {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
   const { toast } = useToast();
+  const { logout } = useAuth();
 
   const handleLogout = () => {
-    // Dispatch Redux logout action (this clears both Redux state and localStorage)
-    dispatch(logoutSuccess());
-    
+    logout();
     toast({
       title: "Logged out",
       description: "You have been successfully logged out",
     });
-    
-    // Force navigation and page reload to ensure clean state
     navigate("/auth");
-    window.location.reload();
   };
 
   return (
@@ -53,11 +47,6 @@ export function TopNav() {
 
         <div className="flex items-center gap-2">
           <ThemeSwitcher />
-          
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive" />
-          </Button>
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

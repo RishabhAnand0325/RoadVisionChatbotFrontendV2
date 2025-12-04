@@ -122,5 +122,10 @@ export async function getDashboardData(): Promise<DashboardData> {
         progress: 33
       },
     ],
+    todayHearing: {
+      caseId: "38572/2025",
+      court: "Saket District Court",
+      time: "2:00 PM"
+    }
   };
 }

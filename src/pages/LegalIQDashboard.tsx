@@ -1,10 +1,10 @@
-import { LegalIQDashboardUI } from "@/components/legaliq/LegalIQDashboardUI";
+import { CeigallIQDashboardUI } from "@/components/ceigalliq/CeigallIQDashboardUI";
 
-const legaliqModules = [
+const ceigalliqModules = [
   {
     id: 'case-tracker',
     name: 'Case Tracker',
-    route: '/legaliq/cases',
+    route: '/ceigalliq/cases',
     icon: 'Briefcase',
     description: 'Track and manage your legal cases',
     color: 'from-blue-500 to-cyan-500',
@@ -12,7 +12,7 @@ const legaliqModules = [
   {
     id: 'document-drafting',
     name: 'Document Drafting',
-    route: '/legaliq/drafting',
+    route: '/ceigalliq/drafting',
     icon: 'FileEdit',
     description: 'Generate legal documents from templates',
     color: 'from-violet-500 to-purple-500',
@@ -20,7 +20,7 @@ const legaliqModules = [
   {
     id: 'document-anonymization',
     name: 'Anonymization',
-    route: '/legaliq/anonymization',
+    route: '/ceigalliq/anonymization',
     icon: 'ShieldCheck',
     description: 'Anonymize sensitive information in documents',
     color: 'from-green-500 to-emerald-500',
@@ -28,7 +28,7 @@ const legaliqModules = [
   {
     id: 'legal-research',
     name: 'Legal Research',
-    route: '/legaliq/research',
+    route: '/ceigalliq/research',
     icon: 'Search',
     description: 'Search and analyze legal precedents',
     color: 'from-orange-500 to-amber-500',
@@ -36,13 +36,13 @@ const legaliqModules = [
   {
     id: 'analyze-document',
     name: 'Analyze Document',
-    route: '/legaliq/analyze',
+    route: '/ceigalliq/analyze',
     icon: 'FileSearch',
     description: 'Extract insights from legal documents',
     color: 'from-pink-500 to-rose-500',
   },
 ];
 
-export default function LegalIQDashboard() {
-  return <LegalIQDashboardUI modules={legaliqModules} />;
+export default function CeigallIQDashboard() {
+  return <CeigallIQDashboardUI modules={ceigalliqModules} />;
 }

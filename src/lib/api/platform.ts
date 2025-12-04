@@ -2,30 +2,39 @@
  * Platform-level API calls for Ceigall AI Platform
  */
 
+import { API_BASE_URL } from '@/lib/config/api';
 import { PlatformSummary, UserProfile, RecentActivity } from '@/lib/types/platform';
-
-const API_BASE_URL = '/api/v1';
 
 /**
  * Get platform-wide summary statistics
  */
 export async function getPlatformSummary(): Promise<PlatformSummary> {
-  // TODO: Replace with actual API call
-  return {
-    activeUsers: 156,
-    activeUsersTrend: 12,
-    aiQueriesToday: 342,
-    aiQueriesTodayTrend: 8,
-    tendersAnalyzed: 28,
-    activeCases: 14,
-  };
+  try {
+    const response = await fetch(`${API_BASE_URL}/dashboard/summary`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch platform summary');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching platform summary:', error);
+    // Fallback to mock data if API fails
+    return {
+      activeUsers: 156,
+      activeUsersTrend: 12,
+      aiQueriesToday: 342,
+      aiQueriesTodayTrend: 8,
+      tendersAnalyzed: 28,
+      activeCases: 14,
+    };
+  }
 }
 
 /**
  * Get current user profile
  */
 export async function getCurrentUserProfile(): Promise<UserProfile> {
-  // TODO: Replace with actual API call
+  // TODO: Implement actual user profile fetching from /auth/users/me
+  // For now, keep mock data as requested scope was dashboard stats
   return {
     id: 'user-001',
     fullName: 'John Doe',
@@ -45,52 +54,15 @@ export async function getCurrentUserProfile(): Promise<UserProfile> {
  * Get recent user activity
  */
 export async function getRecentActivity(): Promise<RecentActivity[]> {
-  // TODO: Replace with actual API call
-  return [
-    {
-      id: 'activity-1',
-      type: 'chat',
-      title: 'Contract analysis query',
-      module: 'Ask CeigallAI',
-      timestamp: '2025-01-28T14:30:00Z',
-      status: 'complete',
-      icon: 'MessageSquare',
-    },
-    {
-      id: 'activity-2',
-      type: 'case',
-      title: 'Added hearing for Case CC/2025/38572',
-      module: 'LegalIQ',
-      timestamp: '2025-01-28T11:15:00Z',
-      status: 'complete',
-      icon: 'Briefcase',
-    },
-    {
-      id: 'activity-3',
-      type: 'document',
-      title: 'Anonymized DFE7393A_Contract.pdf',
-      module: 'LegalIQ',
-      timestamp: '2025-01-28T09:45:00Z',
-      status: 'complete',
-      icon: 'FileText',
-    },
-    {
-      id: 'activity-4',
-      type: 'analysis',
-      title: 'Document analysis in progress',
-      module: 'Ask CeigallAI',
-      timestamp: '2025-01-27T16:20:00Z',
-      status: 'in_progress',
-      icon: 'FileSearch',
-    },
-    {
-      id: 'activity-5',
-      type: 'document',
-      title: 'Uploaded vendor agreement template',
-      module: 'LegalIQ',
-      timestamp: '2025-01-27T14:00:00Z',
-      status: 'complete',
-      icon: 'Upload',
-    },
-  ];
+  try {
+    const response = await fetch(`${API_BASE_URL}/dashboard/activity/recent`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch recent activity');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching recent activity:', error);
+    // Fallback to mock data
+    return [];
+  }
 }

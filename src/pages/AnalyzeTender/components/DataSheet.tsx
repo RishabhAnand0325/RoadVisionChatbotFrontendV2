@@ -7,11 +7,10 @@ interface DataSheetProps {
 }
 
 export default function DataSheet({ dataSheet }: DataSheetProps) {
-  // Handle null or empty data sheet
   if (!dataSheet) {
     return (
       <div className="flex items-center justify-center p-12">
-        <p className="text-muted-foreground">Data sheet is not available yet.</p>
+        <p className="text-muted-foreground">Data Sheet information is not available yet.</p>
       </div>
     );
   }

@@ -51,7 +51,7 @@ export function PlatformDashboardUI({
     return false;
   });
 
-  const quickActionModules = accessibleModules.filter(m => m.id !== 'dashboard').slice(0, 4);
+  const quickActionModules = accessibleModules.filter(m => m.id !== 'dashboard' && m.id !== 'dms').slice(0, 4);
 
   return (
     <div className="space-y-6">
@@ -64,8 +64,8 @@ export function PlatformDashboardUI({
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {/* <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Users</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
@@ -84,7 +84,7 @@ export function PlatformDashboardUI({
               <span>from last month</span>
             </p>
           </CardContent>
-        </Card>
+        </Card> */}
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -94,15 +94,8 @@ export function PlatformDashboardUI({
           <CardContent>
             <div className="text-2xl font-bold">{summary.aiQueriesToday}</div>
             <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-              {summary.aiQueriesTodayTrend > 0 ? (
-                <TrendingUp className="h-3 w-3 text-green-500" />
-              ) : (
-                <TrendingDown className="h-3 w-3 text-red-500" />
-              )}
-              <span className={summary.aiQueriesTodayTrend > 0 ? 'text-green-500' : 'text-red-500'}>
-                {Math.abs(summary.aiQueriesTodayTrend)}%
-              </span>
-              <span>from yesterday</span>
+              
+              
             </p>
           </CardContent>
         </Card>
@@ -139,7 +132,7 @@ export function PlatformDashboardUI({
       {/* Quick Actions */}
       <div>
         <h2 className="text-2xl font-semibold mb-4">Quick Actions</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {quickActionModules.map((module) => {
             const IconComponent = getActivityIcon(module.icon);
             return (
@@ -214,13 +207,6 @@ export function PlatformDashboardUI({
                 );
               })}
             </div>
-            <Button 
-              variant="outline" 
-              className="w-full mt-4"
-              onClick={() => onNavigate('/activity')}
-            >
-              View All Activity
-            </Button>
           </CardContent>
         </Card>
       </div>

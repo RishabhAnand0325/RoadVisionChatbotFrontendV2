@@ -119,8 +119,8 @@ export type TenderHistoryType =
   "amendment";
 
 export interface TenderHistoryDateChange {
-  from: string;
-  to: string;
+  from_date?: string;
+  to_date?: string;
 }
 
 export interface TenderHistoryItem {
@@ -168,8 +168,8 @@ export interface FullTenderDetails {
   tender_brief: string;
   state: string;
   document_fees: string;
-  emd: string;
-  tender_value: string;
+  emd: number | string;
+  tender_value: number | string;
   tender_type: string;
   bidding_type: string;
   competition_type: string;

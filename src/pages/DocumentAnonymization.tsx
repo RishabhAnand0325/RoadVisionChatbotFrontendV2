@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, Download, Eye, EyeOff, FileText, Shield, Bot } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { BackButton } from "@/components/common/BackButton";
 
 interface DataField {
   id: string;
@@ -96,7 +97,8 @@ export default function DocumentAnonymization() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Document Anonymization</h1>
+          <BackButton to="/ceigalliq" />
+          <h1 className="text-3xl font-bold text-foreground mb-2 mt-2">Document Anonymization</h1>
           <p className="text-muted-foreground">
             Automatically hide sensitive information from legal documents
           </p>
