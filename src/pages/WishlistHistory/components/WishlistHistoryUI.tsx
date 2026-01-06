@@ -15,12 +15,10 @@ export function MetadataCard({ title, value, LucideIcon, description }: Metadata
   return (
     <div className="p-4 border rounded-lg flex flex-col gap-2">
       <div className="flex flex-row justify-between items-center w-full">
-        <span>{title}</span>
-        <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-          <LucideIcon className="h-6 w-6 text-secondary" />
-        </div>
+        <span className="text-sm font-medium">{title}</span>
+        <LucideIcon className="h-6 w-6 text-primary flex-shrink-0" />
       </div>
-      <h1>{value}</h1>
+      <h1 className="text-2xl font-bold break-words">{value}</h1>
       <p className="text-sm text-muted-foreground">{description}</p>
     </div>
   )
@@ -238,7 +236,7 @@ export default function WishlistHistoryUI({ navigate, data, handleViewTender, ha
     }
     const tendersWonValueMetadata: MetadataCardProps = {
       title: 'Tenders Won Value',
-      value: "Rs." + tendersToUse.filter(tender => tender.results === 'won').reduce((total, tender) => total + tender.value, 0).toLocaleString('en-IN') + "Cr",
+      value: getCurrencyTextFromNumber(tendersToUse.filter(tender => tender.results === 'won').reduce((total, tender) => total + tender.value, 0)),
       LucideIcon: IndianRupee,
       description: 'Total value won',
     }
@@ -279,9 +277,7 @@ export default function WishlistHistoryUI({ navigate, data, handleViewTender, ha
         <div className="flex items-center gap-4">
           <BackButton to="/tenderiq" />
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
-              <Heart className="h-6 w-6 text-primary-foreground" />
-            </div>
+            <Heart className="h-8 w-8 text-primary" />
             <div>
               <h1 className="text-3xl font-bold leading-tight">Wishlist</h1>
               <p className="text-xs text-muted-foreground">

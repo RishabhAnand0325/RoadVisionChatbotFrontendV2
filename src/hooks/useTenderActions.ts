@@ -1,6 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { performTenderAction } from '@/lib/api/tenderiq';
+import { checkAnalysisExists } from '@/lib/api/analyze';
+import { getUserPreferences } from '@/lib/api/auth';
 import { TenderActionRequest } from '@/lib/types/tenderiq.types';
 
 /**
@@ -25,11 +27,31 @@ export function useTenderActions() {
         }
       });
       
+      // For adding to wishlist, check if analysis already exists and user preference
+      let descriptionText = 'Tender added to wishlist.';
+      if (!currentState) {
+        try {
+          const userPrefs = await getUserPreferences();
+          const analysisExists = await checkAnalysisExists(tenderId);
+          
+          if (userPrefs.auto_analyze_on_wishlist) {
+            descriptionText = analysisExists 
+              ? 'Tender added to wishlist. Analysis for the tender already exists.'
+              : 'Tender added to wishlist. Analysis for the tender has also begun.';
+          } else {
+            descriptionText = 'Tender added to wishlist.';
+          }
+        } catch (error) {
+          // If check fails, use the default message
+          descriptionText = 'Tender added to wishlist.';
+        }
+      }
+      
       toast({
         title: currentState ? 'Removed from wishlist' : 'Added to wishlist',
         description: currentState
           ? 'Tender removed from wishlist.'
-          : 'Tender added to wishlist.',
+          : descriptionText,
       });
       
       // Sync with backend in the background
@@ -40,6 +62,22 @@ export function useTenderActions() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to update wishlist';
       console.error('Error toggling wishlist:', error);
+      
+      // If tender is not found in database, remove it from the UI
+      if (errorMessage.includes('not found') || errorMessage.includes('removed from your wishlist')) {
+        queryClient.setQueryData(['wishlist'], (oldData: any[]) => {
+          if (!oldData) return oldData;
+          return oldData.filter(item => item.id !== tenderId);
+        });
+        
+        toast({
+          title: 'Tender Removed',
+          description: 'This tender is no longer available. It has been removed from your wishlist.',
+          variant: 'destructive',
+        });
+        return; // Don't throw error, just silently remove it
+      }
+      
       toast({
         title: 'Error',
         description: errorMessage,
@@ -78,6 +116,22 @@ export function useTenderActions() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to update favorites';
       console.error('Error toggling favorite:', error);
+      
+      // If tender is not found in database, remove it from the UI
+      if (errorMessage.includes('not found') || errorMessage.includes('no longer available')) {
+        queryClient.setQueryData(['favorites'], (oldData: any[]) => {
+          if (!oldData) return oldData;
+          return oldData.filter(item => item.id !== tenderId);
+        });
+        
+        toast({
+          title: 'Tender Removed',
+          description: 'This tender is no longer available. It has been removed from your favorites.',
+          variant: 'destructive',
+        });
+        return; // Don't throw error, just silently remove it
+      }
+      
       toast({
         title: 'Error',
         description: errorMessage,
@@ -116,6 +170,22 @@ export function useTenderActions() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to update archive';
       console.error('Error toggling archive:', error);
+      
+      // If tender is not found in database, remove it from the UI
+      if (errorMessage.includes('not found') || errorMessage.includes('no longer available')) {
+        queryClient.setQueryData(['archived'], (oldData: any[]) => {
+          if (!oldData) return oldData;
+          return oldData.filter(item => item.id !== tenderId);
+        });
+        
+        toast({
+          title: 'Tender Removed',
+          description: 'This tender is no longer available. It has been removed from your archive.',
+          variant: 'destructive',
+        });
+        return; // Don't throw error, just silently remove it
+      }
+      
       toast({
         title: 'Error',
         description: errorMessage,

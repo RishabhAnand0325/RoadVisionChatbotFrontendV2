@@ -60,8 +60,11 @@ export const performTenderAction = async (
 /**
 * Fetch the full details of a tender
 * */
-export const fetchFullTenderDetails = async (tenderId: string): Promise<FullTenderDetails> => {
-  const url = `${API_BASE_URL}/tenderiq/tenders/${tenderId}/full`;
+export const fetchFullTenderDetails = async (tenderId: string, tdr?: string): Promise<FullTenderDetails> => {
+  let url = `${API_BASE_URL}/tenderiq/tenders/${tenderId}/full`;
+  if (tdr) {
+    url += `?tdr=${encodeURIComponent(tdr)}`;
+  }
   console.log(`Fetching analysis for tender ${tenderId} from:`, url);
   try {
     const response = await fetch(url, { headers: getAuthHeaders() });

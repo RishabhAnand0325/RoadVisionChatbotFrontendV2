@@ -13,16 +13,22 @@ import {
 } from '@/lib/api/tenderiq';
 import { Tender, FullTenderDetails, TenderHistoryItem } from '@/lib/types/tenderiq.types';
 import { useTenderActions } from '@/hooks/useTenderActions';
+import { useSearchParams } from 'react-router-dom';
 
 export default function TenderDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const tdr = searchParams.get('tdr');
   const { handleToggleWishlist, handleToggleFavorite, handleToggleArchive } = useTenderActions();
 
-  const { data: tender, isLoading, isError } = useQuery<FullTenderDetails, Error>({
-    queryKey: ['tenderDetails', id],
-    queryFn: () => fetchFullTenderDetails(id!),
+  const { data: tender, isLoading, isError, refetch: refetchTenderDetails } = useQuery<FullTenderDetails, Error>({
+    queryKey: ['tenderDetails', id, tdr],
+    queryFn: () => fetchFullTenderDetails(id!, tdr || undefined),
     enabled: !!id,
+    staleTime: 0,  // Always treat as stale to ensure fresh data
+    gcTime: 0,     // Don't cache in background
+    refetchOnMount: true,  // Always refetch when component mounts
   });
 
   const { data: wishlist } = useQuery<Tender[], Error>({
@@ -50,32 +56,44 @@ export default function TenderDetails() {
     refetchOnMount: true,
   });
 
-  const isWishlisted = wishlist?.some((item) => item.id === id) ?? false;
-  const isFavorited = favorites?.some((item) => item.id === id) ?? false;
-  const isArchived = archived?.some((item) => item.id === id) ?? false;
+  // Use is_wishlisted field from the tender object itself (from backend)
+  // This is the authoritative source of truth for the tender's state
+  const isWishlisted = tender?.is_wishlisted ?? false;
+  const isFavorited = tender?.is_favorite ?? false;
+  const isArchived = tender?.is_archived ?? false;
 
-  const handleAddToWishlist = () => {
+  const handleAddToWishlist = async () => {
     if (!tender) return;
-    // Fire and forget - update UI immediately, sync with backend in the background
-    handleToggleWishlist(tender.id, isWishlisted).catch(() => {
+    // Update with backend, then refetch tender details to get updated flag
+    try {
+      await handleToggleWishlist(tender.id, isWishlisted);
+      // Refetch tender details to update the is_wishlisted flag
+      await refetchTenderDetails();
+    } catch (error) {
       // Error is already handled by the hook with toast
-    });
+    }
   };
 
-  const handleToggleFavoriteAction = () => {
+  const handleToggleFavoriteAction = async () => {
     if (!tender) return;
-    // Fire and forget - update UI immediately, sync with backend in the background
-    handleToggleFavorite(tender.id, isFavorited).catch(() => {
+    try {
+      await handleToggleFavorite(tender.id, isFavorited);
+      // Refetch tender details to update the is_favorite flag
+      await refetchTenderDetails();
+    } catch (error) {
       // Error is already handled by the hook with toast
-    });
+    }
   };
 
-  const handleToggleArchiveAction = () => {
+  const handleToggleArchiveAction = async () => {
     if (!tender) return;
-    // Fire and forget - update UI immediately, sync with backend in the background
-    handleToggleArchive(tender.id, isArchived).catch(() => {
+    try {
+      await handleToggleArchive(tender.id, isArchived);
+      // Refetch tender details to update the is_archived flag
+      await refetchTenderDetails();
+    } catch (error) {
       // Error is already handled by the hook with toast
-    });
+    }
   };
   
   const handleNavigate = (path: string) => {

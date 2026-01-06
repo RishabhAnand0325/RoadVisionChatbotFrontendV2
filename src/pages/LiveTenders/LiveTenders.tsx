@@ -1,9 +1,8 @@
-import { Card } from "@/components/ui/card";
 import { Report, ScrapeDate, Tender } from "@/lib/types/tenderiq.types";
 import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import LiveTendersUI from "./components/LiveTendersUI";
-import { getTodayTenders, fetchWishlistedTenders, getScrapeDates } from "@/lib/api/tenderiq.api";
+import { getScrapeDates, fetchWishlistedTenders } from "@/lib/api/tenderiq.api";
 import { useNavigate } from "react-router-dom";
 import { useReportStream } from "@/lib/hooks/tenderiq.hook";
 import { useTenderActions } from "@/hooks/useTenderActions";
@@ -11,16 +10,43 @@ import { useTenderActions } from "@/hooks/useTenderActions";
 export default function LiveTenders() {
   const [runId, setRunId] = useState<string | undefined>(undefined)
   const [dateRange, setDateRange] = useState<string | undefined>("last_5_days")
-  const { report, status, error } = useReportStream(runId, dateRange)
+  const { report: streamReport, status, error } = useReportStream(runId, dateRange)
+  const [localReport, setLocalReport] = useState<Report | undefined>(undefined)
   const [dates, setDate] = useState<ScrapeDate[]>([])
-  const [wishlisted, setWishlisted] = useState<Tender[]>([])
+  const [wishlistedTenderIds, setWishlistedTenderIds] = useState<Set<string>>(new Set())
   const navigate = useNavigate()
   const { handleToggleWishlist } = useTenderActions()
 
-  const fetchWishlisted = async () => {
-    const wishlisted_tenders = await fetchWishlistedTenders()
-    setWishlisted(wishlisted_tenders)
-  }
+  // Fetch user's wishlist on mount to know which tenders are wishlisted
+  useEffect(() => {
+    fetchWishlistedTenders()
+      .then(wishlistedTenders => {
+        // Extract tender IDs (using tdr/tender_id_str as the key since that's what matches)
+        const ids = new Set(wishlistedTenders.map(t => t.tdr || t.tender_id_str))
+        setWishlistedTenderIds(ids)
+      })
+      .catch(err => {
+        console.error('Error fetching wishlist:', err)
+      })
+  }, [])
+
+  // Sync local report with stream report and merge wishlist status
+  useEffect(() => {
+    if (streamReport) {
+      // Merge wishlist status into the report
+      const reportWithWishlistStatus: Report = {
+        ...streamReport,
+        queries: streamReport.queries.map(query => ({
+          ...query,
+          tenders: query.tenders.map(tender => ({
+            ...tender,
+            is_wishlisted: wishlistedTenderIds.has(tender.tdr) || wishlistedTenderIds.has(tender.tender_id_str) || tender.is_wishlisted
+          }))
+        }))
+      }
+      setLocalReport(reportWithWishlistStatus)
+    }
+  }, [streamReport, wishlistedTenderIds])
 
   const onDateSelect = async (dateValue: string) => {
     console.log("Selected date/range: ", dateValue)
@@ -46,7 +72,6 @@ export default function LiveTenders() {
   }
 
   useEffect(() => {
-    fetchWishlisted()
     getScrapeDates().then(scrape_dates => {
       setDate(scrape_dates.dates)
     })
@@ -61,47 +86,74 @@ export default function LiveTenders() {
     }
   }, [error, navigate])
 
+  // Helper function to update tender's is_wishlisted in local report
+  const updateTenderWishlistStatus = useCallback((tenderId: string, isWishlisted: boolean) => {
+    setLocalReport(prevReport => {
+      if (!prevReport) return prevReport
+      return {
+        ...prevReport,
+        queries: prevReport.queries.map(query => ({
+          ...query,
+          tenders: query.tenders.map(tender => 
+            tender.id === tenderId 
+              ? { ...tender, is_wishlisted: isWishlisted }
+              : tender
+          )
+        }))
+      }
+    })
+  }, [])
+
+  const handleAddToWishlist = useCallback(async function (tenderId: string, e: React.MouseEvent): Promise<void> {
+    // Prevent event from bubbling up (e.g., if card has click handler)
+    e.stopPropagation()
+    
+    // Find the tender to get current wishlist status
+    let currentTender: Tender | undefined
+    if (localReport?.queries) {
+      for (const query of localReport.queries) {
+        const found = query.tenders.find(t => t.id === tenderId)
+        if (found) {
+          currentTender = found
+          break
+        }
+      }
+    }
+
+    const isCurrentlyWishlisted = currentTender?.is_wishlisted ?? false
+
+    // Optimistic update - toggle the wishlist status immediately
+    updateTenderWishlistStatus(tenderId, !isCurrentlyWishlisted)
+
+    try {
+      await handleToggleWishlist(tenderId, isCurrentlyWishlisted)
+      // Stay on the page - don't navigate, just toggle the star
+    } catch (error) {
+      // Revert on error
+      updateTenderWishlistStatus(tenderId, isCurrentlyWishlisted)
+      console.error('Error in onAddToWishlist:', error)
+    }
+  }, [localReport, handleToggleWishlist, updateTenderWishlistStatus])
+
+  const handleViewTender = useCallback(function (tenderId: string, tdr?: string): void {
+    const tdrParam = tdr ? `?tdr=${encodeURIComponent(tdr)}` : ''
+    navigate(`/tenderiq/view/${tenderId}${tdrParam}`)
+  }, [navigate])
+
+  const handleNavigateToWishlist = useCallback(function (): void {
+    navigate(`/tenderiq/wishlist-history`)
+  }, [navigate])
+
   return <LiveTendersUI
-    report={report}
+    report={localReport}
     status={status}
     onChangeDate={onDateSelect}
     dates={dates}
-    onAddToWishlist={async function (tenderId: string, e: React.MouseEvent): Promise<void> {
-      const isCurrentlyWishlisted = wishlisted.some(t => t.id === tenderId)
-
-      // Optimistic update - update UI immediately
-      if (isCurrentlyWishlisted) {
-        setWishlisted(wishlisted.filter(t => t.id !== tenderId))
-      } else {
-        // Add to wishlisted (we don't have full tender data, but just mark it)
-        const tender = report?.tenders?.find(t => t.id === tenderId)
-        if (tender) {
-          setWishlisted([...wishlisted, tender])
-        }
-      }
-
-      try {
-        await handleToggleWishlist(tenderId, isCurrentlyWishlisted)
-        // Refresh wishlist after successful toggle to sync with backend
-        await fetchWishlisted()
-        // Navigate to tender details page to view full details and analysis
-        navigate(`/tenderiq/view/${tenderId}`)
-      } catch (error) {
-        // Revert on error
-        await fetchWishlisted()
-        // Error handling is done in the hook
-        console.error('Error in onAddToWishlist:', error)
-      }
-    }}
-    onViewTender={function (tenderId: string): void {
-      navigate(`/tenderiq/view/${tenderId}`)
-    }}
-    onNavigateToWishlist={function (): void {
-      navigate(`/tenderiq/wishlist-history`)
-    }}
-    isInWishlist={function (tenderId: string): boolean {
-      return wishlisted.some(t => t.id === tenderId)
-    }}
+    currentDateRange={dateRange}
+    currentRunId={runId}
+    onAddToWishlist={handleAddToWishlist}
+    onViewTender={handleViewTender}
+    onNavigateToWishlist={handleNavigateToWishlist}
   />
 
 }

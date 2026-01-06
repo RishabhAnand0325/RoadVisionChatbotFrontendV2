@@ -94,8 +94,69 @@ export function removeToken(): void {
 }
 
 /**
+ * Logout user and invalidate token on backend
+ */
+export async function logout(token: string): Promise<void> {
+  try {
+    await fetch(`${API_BASE_URL}/auth/logout`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+  } catch (error) {
+    console.error('Logout API call failed:', error);
+    // Continue with local logout even if API call fails
+  }
+  
+  // Mark this as an explicit logout
+  sessionStorage.setItem('explicitLogout', 'true');
+  removeToken();
+}
+
+/**
  * Check if user is authenticated
  */
 export function isAuthenticated(): boolean {
   return !!getToken();
+}
+
+/**
+ * Get user preferences
+ */
+export async function getUserPreferences(): Promise<{ auto_analyze_on_wishlist: boolean }> {
+  const token = getToken();
+  const response = await fetch(`${API_BASE_URL}/auth/preferences`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch user preferences');
+  }
+
+  return response.json();
+}
+
+/**
+ * Update auto-analyze on wishlist preference
+ */
+export async function updateAutoAnalyzePreference(enabled: boolean): Promise<{ auto_analyze_on_wishlist: boolean; message: string }> {
+  const token = getToken();
+  const response = await fetch(`${API_BASE_URL}/auth/preferences/auto-analyze?enabled=${enabled}`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update preferences');
+  }
+
+  return response.json();
 }
