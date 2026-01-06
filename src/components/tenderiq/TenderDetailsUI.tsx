@@ -7,6 +7,8 @@ import { TenderDetailsType } from '@/lib/types/tenderiq';
 import { FullTenderDetails, TenderHistoryItem } from '@/lib/types/tenderiq.types';
 import { BackButton } from '@/components/common/BackButton';
 import { TenderChangeHistory } from './TenderChangeHistory';
+import { toTitleCase } from '@/lib/utils/text-formatting';
+import { format, parseISO, isValid } from 'date-fns';
 
 // Reusable document card component to eliminate repetition
 const DocumentCard = ({ doc }: { doc: any }) => (
@@ -41,45 +43,27 @@ const formatDate = (dateStr: string | null | undefined): string => {
   if (!dateStr || dateStr === 'Invalid Date' || dateStr === 'N/A') return 'Not Specified';
 
   try {
-    let date: Date;
-
-    // Try ISO format first (YYYY-MM-DD)
-    const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (isoMatch) {
-      const [, year, month, day] = isoMatch;
-      date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-    } else {
-      // Try DD-MM-YYYY format (Indian format)
-      const ddmmyyyyMatch = dateStr.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
-      if (ddmmyyyyMatch) {
-        const [, day, month, year] = ddmmyyyyMatch;
-        date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-      } else {
-        // Try standard Date parsing (ISO or other formats)
-        date = new Date(dateStr);
-      }
+    const date = parseISO(dateStr);
+    if (isValid(date)) {
+      return format(date, 'd MMM yyyy');
     }
-
-    if (isNaN(date.getTime())) return 'Not Specified';
-
-    return date.toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
+    return 'Not Specified';
   } catch {
     return 'Not Specified';
   }
 };
 
-// Helper function to clean description by stripping corrigendum/amendment prefixes
+// Helper function to clean description by stripping corrigendum/amendment prefixes and TDR prefixes
+
+// Helper function to clean description text
 const cleanDescription = (text: string | null | undefined): string => {
   if (!text) return '';
-  // Remove common corrigendum/amendment prefixes
+  // Remove common prefixes
   return text
     .replace(/^(Corrigendum\s*:?\s*)/i, '')
     .replace(/^(Amendment\s*:?\s*)/i, '')
     .replace(/^(Tender\s+For\s+)/i, '')
+    .replace(/^(TDR\s*:\s*\d+\s+)/i, '')  // Remove "TDR: 52770182 " prefix
     .trim();
 };
 
@@ -162,7 +146,7 @@ export default function TenderDetailsUI({
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-foreground">{tender.tender_title || tender.tender_name}</h1>
+              <h1 className="text-3xl font-bold text-foreground">{toTitleCase(tender.tender_title || tender.tender_name)}</h1>
               <Badge variant="outline" className={`${tender.status === 'new' ? 'border-success text-success' :
                 tender.status === 'won' ? 'border-success text-success' :
                   tender.status === 'lost' ? 'border-destructive text-destructive' :
@@ -171,10 +155,10 @@ export default function TenderDetailsUI({
                 {tender.status}
               </Badge>
             </div>
-            <p className="text-muted-foreground">{tender.tendering_authority}</p>
+            <p className="text-muted-foreground">{toTitleCase(tender.tendering_authority)}</p>
             {(tender.tender_details && tender.tender_details.trim()) || (tender.description && tender.description.trim()) || (tender.summary && tender.summary.trim()) ? (
               <p className="text-sm text-muted-foreground mt-3 leading-relaxed line-clamp-4">
-                {cleanDescription(tender.tender_details?.trim() || tender.description?.trim() || tender.summary?.trim())}
+                {toTitleCase(cleanDescription(tender.tender_details?.trim() || tender.description?.trim() || tender.summary?.trim()))}
               </p>
             ) : null}
           </div>
@@ -244,9 +228,9 @@ export default function TenderDetailsUI({
                 <div className="flex items-start gap-3">
                   <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium">Due Date</p>
+                    <p className="text-sm font-medium">Bid Deadline</p>
                     <p className="text-sm text-muted-foreground">
-                      {formatDate(tender.due_date)}
+                      {formatDate(tender.last_date_of_bid_submission)}
                     </p>
                   </div>
                 </div>
@@ -255,7 +239,7 @@ export default function TenderDetailsUI({
                   <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div className="flex-1">
                     <p className="text-sm font-medium">Location</p>
-                    <p className="text-sm text-muted-foreground">{tender.city || tender.location || 'Not Specified'}</p>
+                    <p className="text-sm text-muted-foreground">{toTitleCase(tender.city || tender.location || 'Not Specified')}</p>
                   </div>
                 </div>
 
@@ -264,7 +248,7 @@ export default function TenderDetailsUI({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Category</p>
-                    <Badge variant="secondary">{tender.category || tender.query || 'N/A'}</Badge>
+                    <Badge variant="secondary">{toTitleCase(tender.category || tender.query || 'N/A')}</Badge>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">EMD</p>

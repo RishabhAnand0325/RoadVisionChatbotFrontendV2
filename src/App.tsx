@@ -26,6 +26,7 @@ import LegalResearch from "./pages/LegalResearch";
 import AskAI from "./pages/AskAI";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import Profile from "./pages/Profile";
 import LiveTenders from "./pages/LiveTenders/LiveTenders";
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
@@ -55,6 +56,9 @@ function AppRoutes() {
       {/* Protected Platform Routes */}
       <Route path="/" element={<ProtectedRoute><AppLayout><PlatformDashboard /></AppLayout></ProtectedRoute>} />
       <Route path="/ask-ai" element={<ProtectedRoute><ChatLayout><AskAI /></ChatLayout></ProtectedRoute>} />
+      
+      {/* User Profile Route */}
+      <Route path="/profile" element={<ProtectedRoute><AppLayout><Profile /></AppLayout></ProtectedRoute>} />
       
       {/* Protected CeigallIQ Module Routes */}
       <Route path="/ceigalliq" element={<ProtectedRoute><AppLayout><CeigallIQDashboard /></AppLayout></ProtectedRoute>} />

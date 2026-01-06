@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Calendar, IndianRupee, Search, Eye, Star, Heart, Archive, Loader2, Info } from "lucide-react";
 import { Tender } from "@/lib/types/tenderiq";
 import { fetchWishlistedTenders, fetchFavoriteTenders, fetchArchivedTenders } from "@/lib/api/tenderiq";
+import { toTitleCase } from "@/lib/utils/text-formatting";
 
 type TabValue = "wishlist" | "favorites" | "archived";
 
@@ -81,11 +82,11 @@ const TenderHistory = () => {
                 <div className="flex-1 space-y-3">
                   <div>
                     <h3 className="text-lg font-semibold">{tender.title}</h3>
-                    <p className="text-sm text-muted-foreground">{tender.authority}</p>
+                    <p className="text-sm text-muted-foreground">{toTitleCase(tender.authority)}</p>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-4 text-sm">
-                    <Badge variant="outline">{tender.category}</Badge>
+                    <Badge variant="outline">{toTitleCase(tender.category)}</Badge>
                     <div className="flex items-center gap-1.5">
                       <IndianRupee className="h-4 w-4 text-green-600" />
                       <span className="font-semibold text-green-600">
