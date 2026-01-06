@@ -1,0 +1,229 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Ceigall AI Platform - Enterprise Management System */
+    --background: 220 15% 98%;
+    --foreground: 220 15% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 15%;
+
+    /* Primary: Corporate Blue */
+    --primary: 217 75% 48%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 217 75% 65%;
+    --primary-dark: 217 75% 35%;
+
+    /* Secondary: Professional Slate */
+    --secondary: 220 15% 95%;
+    --secondary-foreground: 220 15% 15%;
+
+    --muted: 220 13% 91%;
+    --muted-foreground: 220 10% 50%;
+
+    --accent: 217 75% 48%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Alert Colors */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    
+    /* Module Accent Colors - Corporate Palette */
+    --green: 142 76% 36%;
+    --orange: 28 80% 52%;
+    --blue: 217 75% 48%;
+    --violet: 250 60% 55%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+
+    /* Borders */
+    --border: 220 13% 88%;
+    --input: 220 13% 88%;
+    --ring: 217 75% 48%;
+
+    --radius: 0.5rem;
+
+    /* Sidebar - Light Theme */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 15% 15%;
+    --sidebar-primary: 217 75% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 13% 95%;
+    --sidebar-accent-foreground: 217 75% 48%;
+    --sidebar-border: 220 13% 88%;
+    --sidebar-ring: 217 75% 48%;
+
+    /* Shadows - Subtle Professional */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.03);
+    --shadow-md: 0 2px 8px -2px rgb(0 0 0 / 0.08);
+    --shadow-lg: 0 8px 24px -4px rgb(0 0 0 / 0.1);
+    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.05);
+
+    /* Transitions */
+    --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-fast: all 0.15s ease-out;
+  }
+
+  .dark {
+    --background: 220 20% 10%;
+    --foreground: 220 10% 95%;
+
+    --card: 220 20% 14%;
+    --card-foreground: 220 10% 95%;
+
+    --popover: 220 20% 14%;
+    --popover-foreground: 220 10% 95%;
+
+    --primary: 217 75% 55%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 217 75% 70%;
+    --primary-dark: 217 75% 40%;
+
+    --secondary: 220 15% 18%;
+    --secondary-foreground: 220 10% 95%;
+
+    --muted: 220 15% 18%;
+    --muted-foreground: 220 10% 65%;
+
+    --accent: 217 75% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    
+    /* Module Accent Colors - Dark Mode */
+    --green: 142 76% 40%;
+    --orange: 28 80% 58%;
+    --blue: 217 75% 55%;
+    --violet: 250 60% 60%;
+    --info: 199 89% 55%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 220 15% 20%;
+    --input: 220 15% 20%;
+    --ring: 217 75% 55%;
+
+    --sidebar-background: 220 25% 8%;
+    --sidebar-foreground: 220 10% 90%;
+    --sidebar-primary: 217 75% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 20% 15%;
+    --sidebar-accent-foreground: 217 75% 70%;
+    --sidebar-border: 220 20% 15%;
+    --sidebar-ring: 217 75% 55%;
+  }
+
+  .professional {
+    /* Professional Blue-Gray Theme */
+    --background: 210 25% 96%;
+    --foreground: 210 30% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 210 30% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 30% 12%;
+
+    --primary: 210 85% 40%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 210 85% 55%;
+    --primary-dark: 210 85% 30%;
+
+    --secondary: 210 20% 92%;
+    --secondary-foreground: 210 30% 12%;
+
+    --muted: 210 15% 88%;
+    --muted-foreground: 210 15% 45%;
+
+    --accent: 210 85% 40%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    
+    /* Module Accent Colors */
+    --green: 142 76% 36%;
+    --orange: 28 80% 52%;
+    --blue: 210 85% 40%;
+    --violet: 250 60% 50%;
+    --info: 199 89% 45%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 210 20% 85%;
+    --input: 210 20% 85%;
+    --ring: 210 85% 40%;
+
+    --sidebar-background: 210 30% 10%;
+    --sidebar-foreground: 210 15% 90%;
+    --sidebar-primary: 210 85% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 25% 16%;
+    --sidebar-accent-foreground: 210 85% 60%;
+    --sidebar-border: 210 25% 16%;
+    --sidebar-ring: 210 85% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    letter-spacing: -0.011em;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+    letter-spacing: -0.025em;
+  }
+  
+  h1 {
+    @apply text-3xl md:text-4xl;
+  }
+  
+  h2 {
+    @apply text-2xl md:text-3xl;
+  }
+  
+  h3 {
+    @apply text-xl md:text-2xl;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .shadow-card {
+    box-shadow: var(--shadow-md);
+  }
+
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+}
