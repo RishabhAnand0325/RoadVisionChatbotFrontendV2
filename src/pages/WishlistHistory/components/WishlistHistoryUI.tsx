@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { HistoryData, HistoryPageResponse, MetadataCardProps, WishlistHistoryUIProps } from "@/lib/types/wishlist";
 import { getCurrencyTextFromNumber } from "@/lib/utils/conversions";
-import { toTitleCase } from "@/lib/utils/text-formatting";
 import { ArrowLeft, Check, Circle, Download, Eye, Filter, Heart, IndianRupee, SquareCheck, Trash2, TrendingUp, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
 import WishlistReportPreview from "./WishlistReportPreview";
@@ -16,12 +15,10 @@ export function MetadataCard({ title, value, LucideIcon, description }: Metadata
   return (
     <div className="p-4 border rounded-lg flex flex-col gap-2">
       <div className="flex flex-row justify-between items-center w-full">
-        <span>{title}</span>
-        <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-          <LucideIcon className="h-6 w-6 text-secondary" />
-        </div>
+        <span className="text-sm font-medium">{title}</span>
+        <LucideIcon className="h-6 w-6 text-primary flex-shrink-0" />
       </div>
-      <h1>{value}</h1>
+      <h1 className="text-2xl font-bold break-words">{value}</h1>
       <p className="text-sm text-muted-foreground">{description}</p>
     </div>
   )
@@ -40,51 +37,14 @@ const capitalizeAnalysisState = (state: string): string => {
   return stateMap[state] || state.charAt(0).toUpperCase() + state.slice(1);
 };
 
-// Helper function to safely parse dates in various formats (ISO and DD-MM-YYYY)
-const formatDate = (dateStr: string | null | undefined): string => {
-  if (!dateStr || dateStr === 'Invalid Date' || dateStr === 'N/A') return 'Not Specified';
-
-  try {
-    let date: Date;
-
-    // Try ISO format first (YYYY-MM-DD)
-    const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (isoMatch) {
-      const [, year, month, day] = isoMatch;
-      date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-    } else {
-      // Try DD-MM-YYYY format (Indian format)
-      const ddmmyyyyMatch = dateStr.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
-      if (ddmmyyyyMatch) {
-        const [, day, month, year] = ddmmyyyyMatch;
-        date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-      } else {
-        // Try standard Date parsing (ISO or other formats)
-        date = new Date(dateStr);
-      }
-    }
-
-    if (isNaN(date.getTime())) return 'Not Specified';
-
-    return date.toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
-  } catch {
-    return 'Not Specified';
-  }
-};
-
-export function TenderCard({ data, handleViewTender, handleRemoveFromWishlist, onUpdateResults }: { data: HistoryData, handleViewTender: (id: string, tdr: string) => void, handleRemoveFromWishlist: (id: string) => Promise<void>, onUpdateResults?: (id: string, results: 'won' | 'rejected' | 'incomplete' | 'pending') => Promise<void> }) {
+export function TenderCard({ data, handleViewTender, handleRemoveFromWishlist, onUpdateResults }: { data: HistoryData, handleViewTender: (id: string) => void, handleRemoveFromWishlist: (id: string) => Promise<void>, onUpdateResults?: (id: string, results: 'won' | 'rejected' | 'incomplete' | 'pending') => Promise<void> }) {
   const [isUpdatingResults, setIsUpdatingResults] = useState(false);
 
   const handleResultsChange = async (newResults: string) => {
     if (onUpdateResults && newResults !== data.results) {
       setIsUpdatingResults(true);
       try {
-        // Use wishlist_id for updates, not the tender id
-        await onUpdateResults(data.wishlist_id || data.id, newResults as 'won' | 'rejected' | 'incomplete' | 'pending');
+        await onUpdateResults(data.id, newResults as 'won' | 'rejected' | 'incomplete' | 'pending');
       } finally {
         setIsUpdatingResults(false);
       }
@@ -110,7 +70,7 @@ export function TenderCard({ data, handleViewTender, handleRemoveFromWishlist, o
     <Card className="hover:shadow-lg transition-shadow">
       <CardContent className="p-6 flex flex-col gap-2">
         <div className="flex justify-between items-center gap-4">
-          <h3 className="flex-1">{toTitleCase(data.title)}</h3>
+          <h3 className="flex-1">{data.title}</h3>
           <div className="flex gap-2 items-center">
             <span className="bg-muted rounded-xl px-2 py-1 text-xs font-bold">{capitalizeAnalysisState(data.analysis_state)}</span>
             <Select value={data.results} onValueChange={handleResultsChange} disabled={isUpdatingResults}>
@@ -126,17 +86,21 @@ export function TenderCard({ data, handleViewTender, handleRemoveFromWishlist, o
             </Select>
           </div>
         </div>
-        <div className="text-xs text-muted-foreground">TDR: {data.tender_no || 'N/A'}</div>
+        <div className="text-sm text-muted-foreground">{data.authority}</div>
         <hr className="my-2" />
         <div className="grid grid-cols-4 grid-rows-2 gap-1">
           <div className="text-xs text-muted-foreground">Tender Value</div>
           <div className="text-xs text-muted-foreground">EMD</div>
-          <div className="text-xs text-muted-foreground">Published Date</div>
-          <div className="text-xs text-muted-foreground">Bid Deadline</div>
+          <div className="text-xs text-muted-foreground">Due Date</div>
+          <div className="text-xs text-muted-foreground">Category</div>
           <div className="font-bold text-blue" >{getCurrencyTextFromNumber(data.value)}</div>
           <div className="font-bold" >{getCurrencyTextFromNumber(data.emd)}</div>
-          <div className="font-bold" >{formatDate(data.publish_date)}</div>
-          <div className="font-bold" >{formatDate(data.last_date_of_bid_submission || data.due_date)}</div>
+          <div className="font-bold" >{data.due_date}</div>
+          <div>
+            <span className="text-xs bg-muted rounded-xl px-2 py-1">
+              {data.category}
+            </span>
+          </div>
         </div>
         <hr className="my-2" />
         <div className="w-full flex justify-between items-center">
@@ -162,7 +126,7 @@ export function TenderCard({ data, handleViewTender, handleRemoveFromWishlist, o
         </div>
         <div className="w-full flex justify-between items-center mt-4">
           <div className="flex gap-2 items-center">
-            <Button variant="outline" size="sm" onClick={() => handleViewTender(data.id, data.tender_ref_number)}>
+            <Button variant="outline" size="sm" onClick={() => handleViewTender(data.id)}>
               <Eye className="h-4 w-4 mr-2" />
               View Tender
             </Button>
@@ -193,13 +157,13 @@ export default function WishlistHistoryUI({ navigate, data, handleViewTender, ha
   const reportData = useWishlistReportData(data);
   const { handleExportToExcel } = useWishlistReportExcel();
 
-  const handleUpdateResults = async (wishlistId: string, results: 'won' | 'rejected' | 'incomplete' | 'pending') => {
+  const handleUpdateResults = async (tenderId: string, results: 'won' | 'rejected' | 'incomplete' | 'pending') => {
     try {
-      await updateWishlistTenderResults(wishlistId, results);
-      // Update local state to reflect the change - match by wishlist_id
+      await updateWishlistTenderResults(tenderId, results);
+      // Update local state to reflect the change
       setUniqueTenders(prev => 
         prev.map(tender => 
-          (tender.wishlist_id || tender.id) === wishlistId ? { ...tender, results } : tender
+          tender.id === tenderId ? { ...tender, results } : tender
         )
       );
     } catch (error) {
@@ -272,16 +236,7 @@ export default function WishlistHistoryUI({ navigate, data, handleViewTender, ha
     }
     const tendersWonValueMetadata: MetadataCardProps = {
       title: 'Tenders Won Value',
-      value: (() => {
-        const total = tendersToUse.filter(tender => tender.results === 'won').reduce((sum, tender) => sum + tender.value, 0);
-        if (total >= 10000000) {
-          return `₹${(total / 10000000).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Cr`;
-        } else if (total >= 100000) {
-          return `₹${(total / 100000).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} L`;
-        } else {
-          return `₹${total.toLocaleString('en-IN')}`;
-        }
-      })(),
+      value: getCurrencyTextFromNumber(tendersToUse.filter(tender => tender.results === 'won').reduce((total, tender) => total + tender.value, 0)),
       LucideIcon: IndianRupee,
       description: 'Total value won',
     }
@@ -322,9 +277,7 @@ export default function WishlistHistoryUI({ navigate, data, handleViewTender, ha
         <div className="flex items-center gap-4">
           <BackButton to="/tenderiq" />
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
-              <Heart className="h-6 w-6 text-primary-foreground" />
-            </div>
+            <Heart className="h-8 w-8 text-primary" />
             <div>
               <h1 className="text-3xl font-bold leading-tight">Wishlist</h1>
               <p className="text-xs text-muted-foreground">

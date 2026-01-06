@@ -15,8 +15,6 @@ import RFPSections from './RFPSections';
 import DataSheet from './DataSheet';
 import Templates from './Templates';
 import { BackButton } from '@/components/common/BackButton';
-import { OpportunityAIChat } from '@/components/tenderiq/OpportunityAIChat';
-import { toTitleCase } from '@/lib/utils/text-formatting';
 
 // Helper to capitalize status words
 const capitalizeStatus = (status: string): string => {
@@ -234,47 +232,35 @@ export default function AnalyzeTenderUI({
 
         {/* Analysis Results */}
         {!isLoading && !isError && analysis && analysis.status === 'completed' && (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <div className="lg:col-span-3">
-              <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-                <TabsList className="grid w-full grid-cols-5">
-                  <TabsTrigger value="one-pager">One Pager</TabsTrigger>
-                  <TabsTrigger value="scope" disabled={!analysis.scope_of_work}>Scope of Work</TabsTrigger>
-                  <TabsTrigger value="sections" disabled={!analysis.rfp_sections}>RFP Sections</TabsTrigger>
-                  <TabsTrigger value="datasheet" disabled={!analysis.data_sheet}>Data Sheet</TabsTrigger>
-                  <TabsTrigger value="templates" disabled={!analysis.templates}>Templates</TabsTrigger>
-                </TabsList>
+          <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="one-pager">One Pager</TabsTrigger>
+              <TabsTrigger value="scope" disabled={!analysis.scope_of_work}>Scope of Work</TabsTrigger>
+              <TabsTrigger value="sections" disabled={!analysis.rfp_sections}>RFP Sections</TabsTrigger>
+              <TabsTrigger value="datasheet" disabled={!analysis.data_sheet}>Data Sheet</TabsTrigger>
+              <TabsTrigger value="templates" disabled={!analysis.templates}>Templates</TabsTrigger>
+            </TabsList>
 
-                <TabsContent value="one-pager" className="mt-6">
-                  <OnePager onePager={analysis.one_pager} />
-                </TabsContent>
+            <TabsContent value="one-pager" className="mt-6">
+              <OnePager onePager={analysis.one_pager} />
+            </TabsContent>
 
-                <TabsContent value="scope" className="mt-6">
-                  <ScopeOfWork scopeOfWork={analysis.scope_of_work} />
-                </TabsContent>
+            <TabsContent value="scope" className="mt-6">
+              <ScopeOfWork scopeOfWork={analysis.scope_of_work} />
+            </TabsContent>
 
-                <TabsContent value="sections" className="mt-6">
-                  <RFPSections rfpSections={analysis.rfp_sections} />
-                </TabsContent>
+            <TabsContent value="sections" className="mt-6">
+              <RFPSections rfpSections={analysis.rfp_sections} />
+            </TabsContent>
 
-                <TabsContent value="datasheet" className="mt-6">
-                  <DataSheet dataSheet={analysis.data_sheet} />
-                </TabsContent>
+            <TabsContent value="datasheet" className="mt-6">
+              <DataSheet dataSheet={analysis.data_sheet} />
+            </TabsContent>
 
-                <TabsContent value="templates" className="mt-6">
-                  <Templates templates={analysis.templates} />
-                </TabsContent>
-              </Tabs>
-            </div>
-            
-            {/* Right Sidebar - AI Chat */}
-            <div className="lg:col-span-1">
-              <OpportunityAIChat
-                opportunityId={tenderId || ''}
-                tenderTitle={toTitleCase(analysis.tender_name || 'Tender')}
-              />
-            </div>
-          </div>
+            <TabsContent value="templates" className="mt-6">
+              <Templates templates={analysis.templates} />
+            </TabsContent>
+          </Tabs>
         )}
       </div>
     </div>

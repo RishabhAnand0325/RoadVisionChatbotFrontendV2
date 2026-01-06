@@ -13,7 +13,6 @@ import {
   FileText,
   ArrowRight,
 } from 'lucide-react';
-import { format, parseISO, isValid } from 'date-fns';
 
 interface TenderChangeHistoryProps {
   history: TenderHistoryItem[];
@@ -27,13 +26,16 @@ const formatDate = (dateStr: string | undefined | null): string => {
   if (!dateStr || dateStr === 'Invalid Date' || dateStr === 'N/A') return 'Not Specified';
   
   try {
-    const date = parseISO(dateStr);
-    if (isValid(date)) {
-      return format(date, 'd MMM yyyy');
-    }
-    return 'Not Specified';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return 'Not Specified';
+    
+    return date.toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
   } catch {
-    return 'Not Specified';
+    return dateStr || 'Not Specified';
   }
 };
 
@@ -166,6 +168,11 @@ const ChangeHistoryItemComponent: React.FC<{ item: TenderHistoryItem; index: num
                     <span className="text-sm text-muted-foreground">
                       {formatDate(item.update_date)}
                     </span>
+                    {formatTime(item.update_date) && (
+                      <span className="text-xs text-muted-foreground">
+                        {formatTime(item.update_date)}
+                      </span>
+                    )}
                   </div>
 
                   {/* Tender Reference */}
@@ -204,42 +211,8 @@ const ChangeHistoryItemComponent: React.FC<{ item: TenderHistoryItem; index: num
               <>
                 <Separator />
                 <div className="p-4 space-y-4">
-                  {/* Field changes section - Primary display */}
-                  {changes.length > 0 && (
-                    <div>
-                      <h4 className="text-sm font-semibold mb-3 text-foreground flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 text-orange-500" />
-                        Important Changes
-                      </h4>
-                      <div className="space-y-3">
-                        {changes.map((change, idx) => (
-                          <div key={idx} className="bg-gradient-to-r from-orange-50 to-transparent rounded-lg p-4 border border-orange-200">
-                            <p className="text-sm font-semibold text-foreground mb-2">
-                              {change.field}
-                            </p>
-                            <div className="flex items-center gap-3">
-                              <div className="flex-1">
-                                <p className="text-xs text-muted-foreground mb-1">Previous</p>
-                                <span className="inline-block px-3 py-1.5 bg-red-100 text-red-800 rounded-md line-through text-sm">
-                                  {change.oldValue}
-                                </span>
-                              </div>
-                              <ArrowRight className="w-5 h-5 text-orange-500 flex-shrink-0" />
-                              <div className="flex-1">
-                                <p className="text-xs text-muted-foreground mb-1">New</p>
-                                <span className="inline-block px-3 py-1.5 bg-green-100 text-green-800 rounded-md font-bold text-sm">
-                                  {change.newValue}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Date change section (legacy support) */}
-                  {item.date_change && (item.date_change.from_date || item.date_change.to_date) && changes.length === 0 && (
+                  {/* Date change section */}
+                  {item.date_change && (item.date_change.from_date || item.date_change.to_date) && (
                     <div>
                       <h4 className="text-sm font-semibold mb-2 text-foreground">Deadline Changed</h4>
                       <div className="bg-muted/50 rounded-lg p-3 flex items-center gap-3">
@@ -260,52 +233,66 @@ const ChangeHistoryItemComponent: React.FC<{ item: TenderHistoryItem; index: num
                     </div>
                   )}
 
-                  {/* Files changed section - Source Documents */}
-                  {item.files_changed && item.files_changed.length > 0 && (
+                  {/* Field changes section */}
+                  {changes.length > 0 && (
                     <div>
-                      <h4 className="text-sm font-semibold mb-3 text-foreground flex items-center gap-2">
-                        <FileText className="w-4 h-4" />
-                        Source Documents
-                      </h4>
-                      <p className="text-xs text-muted-foreground mb-3">
-                        View the corrigendum documents that contain these changes
-                      </p>
-                      <div className="space-y-3">
-                        {item.files_changed.map((file) => (
-                          <Card key={file.id} className="p-4 hover:shadow-md transition-all">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-4 flex-1">
-                                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                                  <FileText className="h-6 w-6 text-primary" />
-                                </div>
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <p className="font-medium">{file.file_name}</p>
-                                  </div>
-                                  <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
-                                    <span className="uppercase">{file.file_type}</span>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex gap-2">
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  onClick={() => window.open(file.file_url, '_blank')} 
-                                  disabled={!file.file_url}
-                                >
-                                  View
-                                </Button>
-                              </div>
+                      <h4 className="text-sm font-semibold mb-2 text-foreground">Changes</h4>
+                      <div className="space-y-2">
+                        {changes.map((change, idx) => (
+                          <div key={idx} className="bg-muted/30 rounded-lg p-2 border border-muted">
+                            <p className="text-xs font-medium text-muted-foreground mb-1">
+                              {change.field}
+                            </p>
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="px-2 py-1 bg-red-50 text-red-700 rounded line-through flex-shrink-0">
+                                {change.oldValue}
+                              </span>
+                              <ArrowRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                              <span className="px-2 py-1 bg-green-50 text-green-700 rounded font-semibold flex-1">
+                                {change.newValue}
+                              </span>
                             </div>
-                          </Card>
+                          </div>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  {/* Full note - hidden by default, show only if no changes parsed */}
-                  {item.note && changes.length === 0 && (
+                  {/* Files changed section */}
+                  {item.files_changed && item.files_changed.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2 text-foreground">Documents Added</h4>
+                      <div className="space-y-2">
+                        {item.files_changed.map((file) => (
+                          <div
+                            key={file.id}
+                            className="flex items-center justify-between p-2 bg-muted/30 rounded-lg border border-muted"
+                          >
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+                              <div className="min-w-0">
+                                <p className="text-xs font-medium truncate">{file.file_name}</p>
+                                <p className="text-xs text-muted-foreground">{file.file_type}</p>
+                              </div>
+                            </div>
+                            {file.file_url && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(file.file_url, '_blank')}
+                                className="flex-shrink-0 ml-2 h-6 text-xs"
+                              >
+                                View
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Full note */}
+                  {item.note && (
                     <div>
                       <h4 className="text-sm font-semibold mb-2 text-foreground">Details</h4>
                       <div className="bg-muted/30 rounded-lg p-3 text-xs whitespace-pre-wrap text-muted-foreground font-mono max-h-32 overflow-auto">

@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectValue } from '@/components/ui/
 import { SelectTrigger } from '@radix-ui/react-select';
 import { BackButton } from '@/components/common/BackButton';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO, isValid } from 'date-fns';
 import { WishlistPreferences } from '@/components/tenderiq/WishlistPreferences';
 import { ViewToggle } from '@/components/tenderiq/ViewToggle';
@@ -40,8 +39,35 @@ interface LiveTendersUIProps {
   onNavigateToWishlist: () => void;
   onAskAI: (tenderId: string) => void;
   onChangeDate: (date: string) => void;
-  dates: ScrapeDate[]
+  dates: ScrapeDate[];
+  currentDateRange?: string;
+  currentRunId?: string;
 }
+
+// Helper to get display text for current filter
+const getFilterDisplayText = (dateRange?: string, runId?: string, dates?: ScrapeDate[]): string => {
+  if (dateRange) {
+    switch (dateRange) {
+      case "last_2_days": return "Last 2 Days";
+      case "last_5_days": return "Last 5 Days";
+      case "last_7_days": return "Last 7 Days";
+      case "last_30_days": return "Last 30 Days";
+      default: return "Select Date";
+    }
+  }
+  if (runId && dates) {
+    const match = dates.find(d => d.id === runId);
+    if (match) {
+      try {
+        const date = new Date(match.date);
+        return format(date, "dd MMM yyyy");
+      } catch {
+        return match.date;
+      }
+    }
+  }
+  return "Select Date";
+};
 
 export default function LiveTendersUI({
   report,
@@ -51,14 +77,15 @@ export default function LiveTendersUI({
   onNavigateToWishlist,
   onAskAI,
   onChangeDate,
-  dates
+  dates,
+  currentDateRange,
+  currentRunId
 }: LiveTendersUIProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredQueries, setFilteredQueries] = useState<Query[]>(report ? report.queries : []);
   const [totalTenders, setTotalTenders] = useState(0);
   const [shownTenders, setShownTenders] = useState(0);
   const [minPrice, setMinPrice] = useState("");
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [viewType, setViewType] = useState<'grid' | 'list'>(() => {
     return (localStorage.getItem('tender-view-preference') as 'grid' | 'list') || 'grid';
@@ -74,11 +101,18 @@ export default function LiveTendersUI({
     report.queries.forEach((query) => {
       let tenders: Tender[] = []
       query.tenders.forEach((tender) => {
-        if ((tender.tender_name.toLowerCase().includes(searchQuery.toLowerCase())
-          || query.query_name.toLowerCase().includes(searchQuery.toLowerCase())
-          || tender.company_name.toLowerCase().includes(searchQuery.toLowerCase())
-          || tender.state.toLowerCase().includes(searchQuery.toLowerCase()))
-          && getCurrencyNumberFromText(tender.tender_value) >= (parseFloat(minPrice) || 0) * 10000000) {
+        const lowerSearchQuery = searchQuery.toLowerCase()
+        const matchesSearch = (
+          (tender.tender_name?.toLowerCase() || '').includes(lowerSearchQuery) ||
+          (query.query_name?.toLowerCase() || '').includes(lowerSearchQuery) ||
+          (tender.company_name?.toLowerCase() || '').includes(lowerSearchQuery) ||
+          (tender.state?.toLowerCase() || '').includes(lowerSearchQuery) ||
+          (tender.city?.toLowerCase() || '').includes(lowerSearchQuery) ||
+          (tender.tendering_authority?.toLowerCase() || '').includes(lowerSearchQuery) ||
+          (tender.tender_id?.toLowerCase() || '').includes(lowerSearchQuery)
+        )
+        
+        if (matchesSearch && getCurrencyNumberFromText(tender.tender_value) >= (parseFloat(minPrice) || 0) * 10000000) {
           tenders.push(tender)
         }
       })
@@ -169,7 +203,7 @@ export default function LiveTendersUI({
               />
             </div>
 
-            {/* Date Filter Dropdown with Calendar */}
+            {/* Date Filter Dropdown */}
             <div className="w-full">
               <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                 <PopoverTrigger asChild>
@@ -178,17 +212,16 @@ export default function LiveTendersUI({
                     className="h-10 w-full justify-start text-left font-normal"
                   >
                     <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
-                    {selectedDate ? format(selectedDate, "dd MMM yyyy") : "Select Date"}
+                    {getFilterDisplayText(currentDateRange, currentRunId, dates)}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="end" sideOffset={4}>
-                  <div className="px-1 pt-1 pb-1.5 border-b space-y-1">
+                  <div className="px-1 pt-1 pb-1.5 space-y-1">
                     <Button
                       variant="ghost"
                       size="sm"
                       className="w-full justify-start text-sm h-9 px-2"
                       onClick={() => {
-                        setSelectedDate(undefined);
                         setCalendarOpen(false);
                         onChangeDate("last_2_days");
                       }}
@@ -200,7 +233,6 @@ export default function LiveTendersUI({
                       size="sm"
                       className="w-full justify-start text-sm h-9 px-2"
                       onClick={() => {
-                        setSelectedDate(undefined);
                         setCalendarOpen(false);
                         onChangeDate("last_5_days");
                       }}
@@ -212,7 +244,6 @@ export default function LiveTendersUI({
                       size="sm"
                       className="w-full justify-start text-sm h-9 px-2"
                       onClick={() => {
-                        setSelectedDate(undefined);
                         setCalendarOpen(false);
                         onChangeDate("last_7_days");
                       }}
@@ -224,7 +255,6 @@ export default function LiveTendersUI({
                       size="sm"
                       className="w-full justify-start text-sm h-9 px-2"
                       onClick={() => {
-                        setSelectedDate(undefined);
                         setCalendarOpen(false);
                         onChangeDate("last_30_days");
                       }}
@@ -232,26 +262,6 @@ export default function LiveTendersUI({
                       Last 30 Days
                     </Button>
                   </div>
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={(date) => {
-                      setSelectedDate(date);
-                      setCalendarOpen(false);
-                      if (date) {
-                        const formattedDate = format(date, "dd-MM-yyyy");
-                        onChangeDate(formattedDate);
-                      }
-                    }}
-                    className="p-1"
-                    classNames={{
-                      months: "flex flex-col space-y-2 items-center",
-                      month: "space-y-2",
-                      table: "border-collapse mx-auto",
-                      head_row: "flex justify-center",
-                      row: "flex mt-1 justify-center",
-                    }}
-                  />
                 </PopoverContent>
               </Popover>
             </div>
@@ -262,12 +272,15 @@ export default function LiveTendersUI({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <p className="text-sm text-muted-foreground">
-              Showing {shownTenders} of {totalTenders} tenders
+              Showing <span className="font-semibold text-foreground">{shownTenders}</span> of <span className="font-semibold text-foreground">{totalTenders}</span> tenders
             </p>
             {status === "streaming" && (
-              <div className="flex items-center gap-1.5">
-                <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
-                <span className="text-xs text-blue-600 font-medium">Loading more...</span>
+              <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-1.5 rounded-md">
+                <div className="relative">
+                  <Loader2 className="h-3.5 w-3.5 text-emerald-600 animate-spin" />
+                  <div className="absolute inset-0 h-3.5 w-3.5 bg-emerald-400/30 rounded-full animate-ping" />
+                </div>
+                <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">Syncing...</span>
               </div>
             )}
           </div>
@@ -293,18 +306,21 @@ export default function LiveTendersUI({
                 query.tenders.map((tender, index) => (
                   <Card
                     key={tender.id}
-                    className="p-6 hover:shadow-lg transition-all cursor-pointer group"
+                    className="p-6 hover:shadow-lg transition-all group"
                   >
                     <div className="space-y-4 h-full flex flex-col">
                       {/* Header */}
                       <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-semibold text-base line-clamp-2 group-hover:text-primary transition-colors flex-1">
+                        <h3 
+                          className="font-semibold text-base line-clamp-2 group-hover:text-primary transition-colors flex-1 cursor-pointer"
+                          onClick={() => onViewTender(tender.id, tender.tdr)}
+                        >
                           {toTitleCase(tender.tender_name)}
                         </h3>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 flex-shrink-0"
+                          className="h-8 w-8 flex-shrink-0 cursor-pointer"
                           onClick={(e) => onAddToWishlist(tender.id, e)}
                         >
                           <Star className={`h-4 w-4 ${tender.is_wishlisted ? 'fill-warning text-warning' : ''}`} />
@@ -316,8 +332,11 @@ export default function LiveTendersUI({
                         TDR: {tender.tdr || tender.tender_id_str || 'N/A'}
                       </p>
 
-                      {/* Authority & Category */}
+                      {/* Authority & Location */}
                       <div className="space-y-2">
+                        {tender.company_name && tender.company_name.toLowerCase() !== tender.tender_name.toLowerCase() && (
+                          <p className="text-sm text-muted-foreground line-clamp-1">{tender.company_name}</p>
+                        )}
                         <div className="flex flex-wrap gap-1.5">
                           <Badge variant="secondary" className="text-xs">
                             {query.query_name}
@@ -340,7 +359,26 @@ export default function LiveTendersUI({
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Tender Value</span>
                           <span className="font-semibold text-primary">
-                            {tender.value}
+                            {tender.tender_value ? (() => {
+                              // Parse tender value - it comes as number or string
+                              let value = 0;
+                              if (typeof tender.tender_value === 'string') {
+                                const match = tender.tender_value.match(/[\d.]+/);
+                                if (match) {
+                                  value = parseFloat(match[0]);
+                                }
+                              } else {
+                                value = tender.tender_value;
+                              }
+                              if (isNaN(value) || value === 0) return tender.value || 'Ref Document';
+                              if (value >= 10000000) {
+                                return `₹${(value / 10000000).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Cr`;
+                              } else if (value >= 100000) {
+                                return `₹${(value / 100000).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} L`;
+                              } else {
+                                return `₹${value.toLocaleString('en-IN')}`;
+                              }
+                            })() : (tender.value || 'Ref Document')}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">

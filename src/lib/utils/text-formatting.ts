@@ -8,18 +8,16 @@
 export const toTitleCase = (text: string | null | undefined): string => {
   if (!text) return '';
   
-  // Check if text is already mostly capitalized (from backend)
-  // If more than 30% of words start with uppercase, assume it's already formatted
-  const words = text.split(' ');
-  const capitalizedWords = words.filter(word => word.length > 0 && word.charAt(0) === word.charAt(0).toUpperCase()).length;
-  const percentCapitalized = (capitalizedWords / words.length) * 100;
+  // Check if ALL words are already properly capitalized
+  const words = text.split(' ').filter(word => word.length > 0);
+  const allWordsCapitalized = words.every(word => word.charAt(0) === word.charAt(0).toUpperCase());
   
-  // If already well-formatted from backend, return as-is
-  if (percentCapitalized > 30) {
+  // If all words already start with uppercase, return as-is
+  if (allWordsCapitalized) {
     return text;
   }
   
-  // Otherwise, apply title case
+  // Otherwise, apply title case to all words
   return text
     .toLowerCase()
     .split(' ')
