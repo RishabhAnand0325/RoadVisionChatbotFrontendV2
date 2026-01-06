@@ -23,21 +23,26 @@ export default function TenderDetails() {
     queryKey: ['tenderDetails', id],
     queryFn: () => fetchFullTenderDetails(id!),
     enabled: !!id,
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
   });
 
   const { data: wishlist } = useQuery<Tender[], Error>({
     queryKey: ['wishlist'],
     queryFn: fetchWishlistedTenders,
+    staleTime: 2 * 60 * 1000, // 2 minutes
   });
 
   const { data: favorites } = useQuery<Tender[], Error>({
     queryKey: ['favorites'],
     queryFn: fetchFavoriteTenders,
+    staleTime: 2 * 60 * 1000, // 2 minutes
   });
 
   const { data: archived } = useQuery<Tender[], Error>({
     queryKey: ['archived'],
     queryFn: fetchArchivedTenders,
+    staleTime: 2 * 60 * 1000, // 2 minutes
   });
 
   // Fetch tender history/changes

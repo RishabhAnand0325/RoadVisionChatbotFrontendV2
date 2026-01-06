@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectValue } from '@/components/ui/
 import { SelectTrigger } from '@radix-ui/react-select';
 import { BackButton } from '@/components/common/BackButton';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
+
 import { format } from 'date-fns';
 
 // Helper to format dates in consistent format (e.g., "1 Dec 2025")
@@ -52,25 +52,56 @@ const formatDate = (dateStr: string | null | undefined): string => {
 interface LiveTendersUIProps {
   report: Report | undefined;
   status: "idle" | "streaming" | "complete" | "error";
+  isRefreshing?: boolean;
   onAddToWishlist: (tenderId: string, e: React.MouseEvent) => void;
   onViewTender: (tenderId: string) => void;
   onNavigateToWishlist: () => void;
   onAskAI: (tenderId: string) => void;
   isInWishlist: (tenderId: string) => boolean;
   onChangeDate: (date: string) => void;
-  dates: ScrapeDate[]
+  dates: ScrapeDate[];
+  currentDateRange?: string;
+  currentRunId?: string;
 }
+
+// Helper to get display text for current filter
+const getFilterDisplayText = (dateRange?: string, runId?: string, dates?: ScrapeDate[]): string => {
+  if (dateRange) {
+    switch (dateRange) {
+      case "last_2_days": return "Last 2 Days";
+      case "last_5_days": return "Last 5 Days";
+      case "last_7_days": return "Last 7 Days";
+      case "last_30_days": return "Last 30 Days";
+      default: return "Select Date";
+    }
+  }
+  if (runId && dates) {
+    const match = dates.find(d => d.id === runId);
+    if (match) {
+      try {
+        const date = new Date(match.date);
+        return format(date, "dd MMM yyyy");
+      } catch {
+        return match.date;
+      }
+    }
+  }
+  return "Select Date";
+};
 
 export default function LiveTendersUI({
   report,
   status,
+  isRefreshing = false,
   onAddToWishlist,
   onViewTender,
   onNavigateToWishlist,
   onAskAI,
   isInWishlist,
   onChangeDate,
-  dates
+  dates,
+  currentDateRange,
+  currentRunId
 }: LiveTendersUIProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredQueries, setFilteredQueries] = useState<Query[]>(report ? report.queries : []);
@@ -213,7 +244,7 @@ export default function LiveTendersUI({
                       className="h-10 w-full justify-start text-left font-normal"
                     >
                       <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
-                      {selectedDate ? format(selectedDate, "dd MMM yyyy") : "Select Date"}
+                      {selectedDate ? format(selectedDate, "dd MMM yyyy") : getFilterDisplayText(currentDateRange, currentRunId, dates)}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="end" sideOffset={4}>
@@ -267,26 +298,7 @@ export default function LiveTendersUI({
                         Last 30 Days
                       </Button>
                     </div>
-                    <Calendar
-                      mode="single"
-                      selected={selectedDate}
-                      onSelect={(date) => {
-                        setSelectedDate(date);
-                        setCalendarOpen(false);
-                        if (date) {
-                          const formattedDate = format(date, "ddMMyyyy");
-                          onChangeDate(formattedDate);
-                        }
-                      }}
-                      className="p-1"
-                      classNames={{
-                        months: "flex flex-col space-y-2 items-center",
-                        month: "space-y-2",
-                        table: "border-collapse mx-auto",
-                        head_row: "flex justify-center",
-                        row: "flex mt-1 justify-center",
-                      }}
-                    />
+
                   </PopoverContent>
                 </Popover>
               </div>
@@ -297,24 +309,75 @@ export default function LiveTendersUI({
         {/* Results Count */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <p className="text-sm text-muted-foreground">
-              Showing {shownTenders} of {totalTenders} tenders
-            </p>
-            {status === "streaming" && (
-              <div className="flex items-center gap-1.5">
+            {totalTenders === 0 && status !== "complete" ? (
+              <div className="flex items-center gap-3 bg-blue-50 dark:bg-blue-950/20 px-4 py-2 rounded-lg">
                 <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
-                <span className="text-xs text-blue-600 font-medium">Loading more...</span>
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium text-blue-700 dark:text-blue-400">Loading tenders...</p>
+                  <p className="text-xs text-blue-600/70 dark:text-blue-500/70">Fetching latest data</p>
+                </div>
               </div>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Showing <span className="font-semibold text-foreground">{shownTenders}</span> of <span className="font-semibold text-foreground">{totalTenders}</span> tenders
+                </p>
+                {status === "streaming" && (
+                  <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-1.5 rounded-md">
+                    <div className="relative">
+                      <Loader2 className="h-3.5 w-3.5 text-emerald-600 animate-spin" />
+                      <div className="absolute inset-0 h-3.5 w-3.5 bg-emerald-400/30 rounded-full animate-ping" />
+                    </div>
+                    <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">Syncing...</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
 
-        {report == undefined &&
-          <Card className="p-12 text-center">
-            <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
-            <p className="text-muted-foreground mt-4">Loading daily tenders...</p>
-          </Card>
-        }
+        {/* Enhanced Skeleton Loading State */}
+        {report == undefined && status !== "complete" && (
+          <div className="space-y-4">
+            {/* Progress bar */}
+            <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-1 overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 animate-[shimmer_2s_ease-in-out_infinite]" 
+                   style={{ width: '60%' }} />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(9)].map((_, i) => (
+              <Card key={i} className="p-6 overflow-hidden relative">
+                <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 dark:via-white/10 to-transparent" />
+                <div className="space-y-4 relative">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 space-y-2">
+                      <div className="h-5 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded" />
+                      <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded w-3/4" />
+                    </div>
+                    <div className="h-9 w-9 bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded-full" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-3 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded w-2/3" />
+                    <div className="flex gap-2">
+                      <div className="h-6 bg-gradient-to-r from-blue-200 to-blue-300 dark:from-blue-900 dark:to-blue-800 rounded-full w-20" />
+                      <div className="h-6 bg-gradient-to-r from-purple-200 to-purple-300 dark:from-purple-900 dark:to-purple-800 rounded-full w-16" />
+                    </div>
+                  </div>
+                  <div className="flex gap-4 pt-2">
+                    <div className="h-3 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded w-24" />
+                    <div className="h-3 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded w-20" />
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <div className="h-8 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded flex-1" />
+                    <div className="h-8 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded flex-1" />
+                  </div>
+                </div>
+              </Card>
+            ))}
+            </div>
+          </div>
+        )}
 
         {/* Tender Grid */}
         {report != undefined &&
@@ -324,7 +387,7 @@ export default function LiveTendersUI({
                 query.tenders.map((tender, index) => (
                   <Card
                     key={tender.id}
-                    className="p-6 hover:shadow-lg transition-all cursor-pointer group"
+                    className="p-6 hover:shadow-lg transition-all group"
                   >
                     <div className="space-y-4 h-full flex flex-col">
                       {/* Header */}
@@ -335,7 +398,7 @@ export default function LiveTendersUI({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 flex-shrink-0"
+                          className="h-8 w-8 flex-shrink-0 cursor-pointer"
                           onClick={(e) => onAddToWishlist(tender.id, e)}
                         >
                           <Star className={`h-4 w-4 ${isInWishlist(tender.id) ? 'fill-warning text-warning' : ''}`} />

@@ -274,19 +274,32 @@ export default function TenderDetailsUI({
                       {formatDate(tender.publish_date)}
                     </p>
                   </div>
-                  {tender.information_source && tender.information_source.trim() ? (
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Tender Source</p>
-                      <a
-                        className="text-sm font-semibold text-blue underline truncate"
-                        href={tender.information_source || '#'}
-                        target='_blank'
-                        rel="noopener noreferrer"
-                      >
-                        {tender.information_source ? new URL(tender.information_source).hostname : 'Not Available'}
-                      </a>
-                    </div>
-                  ) : null}
+                  {tender.information_source && tender.information_source.trim() ? (() => {
+                    try {
+                      const url = new URL(tender.information_source);
+                      return (
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Tender Source</p>
+                          <a
+                            className="text-sm font-semibold text-blue-600 hover:underline truncate"
+                            href={url.href}
+                            target='_blank'
+                            rel="noopener noreferrer"
+                          >
+                            {url.hostname}
+                          </a>
+                        </div>
+                      );
+                    } catch (e) {
+                      // If it's not a valid URL, just display the text
+                      return (
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Tender Source</p>
+                          <p className="text-sm font-semibold">{tender.information_source}</p>
+                        </div>
+                      );
+                    }
+                  })() : null}
                 </div>
 
               </div>
