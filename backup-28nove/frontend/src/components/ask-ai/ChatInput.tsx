@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Loader, Upload } from "lucide-react";
+import { Send, Loader, Upload, X, FileText } from "lucide-react"; // 1. Imported X and FileText
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -17,6 +17,7 @@ export function ChatInput({
   isUploading,
 }: ChatInputProps) {
   const [inputMessage, setInputMessage] = useState("");
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null); // 2. New state for file name
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -67,9 +68,21 @@ export function ChatInput({
 
     if (files.length > 0) {
       onFileUpload(files);
+      
+      // 3. Set the name for display
+      if (files.length === 1) {
+        setSelectedFileName(files[0].name);
+      } else {
+        setSelectedFileName(`${files.length} files uploaded`);
+      }
     }
 
     if (e.target) e.target.value = "";
+  };
+
+  // 4. Function to clear the file label
+  const clearSelectedFile = () => {
+    setSelectedFileName(null);
   };
 
   return (
@@ -86,7 +99,7 @@ export function ChatInput({
           rows={1}
         />
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex items-center gap-3"> {/* 5. Added flex container with gap */}
             <Button
               onClick={() => fileInputRef.current?.click()}
               disabled={disabled}
@@ -100,6 +113,26 @@ export function ChatInput({
               )}
               <span className="text-sm font-medium">Upload File</span>
             </Button>
+
+            {/* 6. The New File Name Section */}
+            {selectedFileName && (
+              <div className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded-md border border-border animate-in fade-in slide-in-from-left-2">
+                <FileText className="w-4 h-4 text-primary" />
+                <span 
+                  className="text-xs font-medium max-w-[150px] truncate text-foreground" 
+                  title={selectedFileName}
+                >
+                  {selectedFileName}
+                </span>
+                <button 
+                  onClick={clearSelectedFile}
+                  className="text-muted-foreground hover:text-destructive transition-colors ml-1 p-0.5 rounded-full hover:bg-background"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+
             <input
               ref={fileInputRef}
               type="file"
